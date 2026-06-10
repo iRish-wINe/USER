@@ -1,3 +1,5 @@
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
 # USER
 
 This repository contains the source for a commercial application.
@@ -55,6 +57,23 @@ python -m your_package
 ```
 
 Add command-line options, environment variables, or example configuration snippets here to help users run the app.
+
+Configuration
+-------------
+
+The application reads configuration from environment variables or a .env file. Example variables:
+
+```
+# Example .env
+APP_ENV=production
+APP_PORT=8080
+DATABASE_URL=postgres://user:pass@localhost:5432/dbname
+LOG_LEVEL=info
+```
+
+Alternatively, use a config.json / config.yaml file and pass its path via CLI or an env var (e.g., CONFIG_PATH=./config.yaml).
+
+Document any required secrets and recommended defaults here (do not commit secrets).
 
 License
 -------
