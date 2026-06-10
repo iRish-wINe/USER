@@ -35,6 +35,27 @@ python -m your_package
 
 Replace the commands above with those specific to your project.
 
+Usage
+-----
+
+Examples for running the application:
+
+Node.js:
+
+```
+npm start
+# or
+node dist/index.js
+```
+
+Python:
+
+```
+python -m your_package
+```
+
+Add command-line options, environment variables, or example configuration snippets here to help users run the app.
+
 License
 -------
 
