@@ -1,0 +1,27 @@
+# Example configuration file for the application
+# Copy to config.yaml or reference via CONFIG_PATH env var. Do not commit secrets.
+
+app:
+  env: production      # development | staging | production
+  port: 8080
+
+logging:
+  level: info          # debug | info | warn | error
+  format: json         # text | json
+
+database:
+  url: "postgres://user:password@localhost:5432/dbname"
+  pool_size: 10
+
+secrets:
+  # Replace with secure values in production. Use a secrets manager when possible.
+  jwt_secret: "REPLACE_ME"
+  encryption_key: "REPLACE_ME"
+
+features:
+  enable_beta: false
+
+# Example external service credentials (keep out of VCS)
+services:
+  sentry_dsn: ""
+  redis_url: "redis://localhost:6379/0"
