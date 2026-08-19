@@ -10,12 +10,10 @@ app.secret_key = "commercial_marketplace_super_secret_token"
 UPLOAD_FOLDER = os.path.join("static", "uploads")
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
-# --- ENTERPRISE DATABASE SCHEMA ---
+# --- SECURE DATABASE ENGINE ---
 def init_db():
     conn = sqlite3.connect("marketplace.db", timeout=20)
     cursor = conn.cursor()
-    
-    # UPGRADED: Users table now tracks corporate business names and account hierarchies
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,7 +70,6 @@ def home():
             filename = secure_filename(file.filename)
             file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
             
-            # Identify if product listing belongs to an individual or a registered company account
             b_label = session.get("company_name") if session.get("company_name") else "Individual Vendor"
             
             query_db(
@@ -81,8 +78,18 @@ def home():
             )
             return redirect(url_for("home"))
             
-    all_products = query_db("SELECT * FROM products ORDER BY id DESC")
-    return render_template("index.html", products=all_products)
+    # UPGRADED SEARCH FILTER PORTAL: Intercept parameter checks coming from the browser search box
+    selected_filter = request.args.get("filter_location")
+    
+    if selected_filter and selected_filter != "All":
+        # Target only item rows matching the specific location parameter selector
+        all_products = query_db("SELECT * FROM products WHERE location = ? ORDER BY id DESC", (selected_filter,))
+    else:
+        # Default fallback view state: Pull the entire national product pipeline catalog
+        all_products = query_db("SELECT * FROM products ORDER BY id DESC")
+        selected_filter = "All"
+        
+    return render_template("index.html", products=all_products, active_filter=selected_filter)
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -97,7 +104,6 @@ def login():
             if check_password_hash(user["password_hash"], password):
                 session["username"] = user["username"]
                 session["email"] = user["email"]
-                # Save corporate tag inside memory cache tracking rows
                 session["company_name"] = user["company_name"]
                 return redirect(url_for("home"))
             
@@ -113,7 +119,6 @@ def register():
         seller_type = request.form.get("seller_type")
         company_name = request.form.get("company_name")
         
-        # If they registered as an individual vendor, ensure company_name defaults cleanly to None
         if seller_type == "Individual":
             company_name = None
             
