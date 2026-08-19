@@ -5,40 +5,31 @@
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; background-color: #f7fafc; color: #2d3748; margin: 0; }
         .container { max-width: 1000px; margin: 0 auto; }
-        
-        /* Top Branding Navigation Bar */
         .navbar { display: flex; justify-content: space-between; align-items: center; background-color: white; padding: 15px 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 30px; }
         .nav-links a { margin-left: 15px; text-decoration: none; color: #2b6cb0; font-weight: bold; }
         .nav-links a.logout { color: #e53e3e; }
         .auth-box { background-color: #ebf8ff; border: 1px solid #bee3f8; padding: 15px; border-radius: 6px; margin-bottom: 20px; text-align: center; }
-
-        /* Split Screen: Form on Left, Catalog on Right */
         .layout { display: grid; grid-template-columns: 320px 1fr; gap: 40px; }
         form { background-color: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); height: fit-content; margin-bottom: 20px; }
-        input[type="text"], input[type="number"], textarea, input[type="file"] { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #e2e8f0; border-radius: 4px; box-sizing: border-box; }
+        input[type="text"], input[type="number"], select, textarea, input[type="file"] { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #e2e8f0; border-radius: 4px; box-sizing: border-box; }
         textarea { height: 80px; resize: vertical; }
-        
         button { background-color: #319795; color: white; border: none; padding: 12px 20px; cursor: pointer; border-radius: 4px; font-size: 16px; width: 100%; font-weight: bold; }
         button:hover { background-color: #2c7a7b; }
-        
-        /* Shop Layout Matrix Grid */
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 25px; }
         .card { background-color: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.02); border: 1px solid #e2e8f0; display: flex; flex-direction: column; }
         .card-img { width: 100%; height: 180px; object-fit: cover; background-color: #edf2f7; }
         .card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; }
         .card-title { font-size: 18px; font-weight: bold; margin: 0 0 5px 0; }
-        
-        /* Local Cedi Price Color Accent */
         .card-price { color: #dd6b20; font-size: 20px; font-weight: bold; margin-bottom: 10px; }
         .card-text { color: #718096; font-size: 14px; margin: 0 0 5px 0; flex-grow: 1; }
-        .card-seller { font-size: 12px; color: #a0aec0; margin-bottom: 10px; font-style: italic; }
+        .card-metadata { font-size: 12px; color: #718096; margin-bottom: 5px; font-style: italic; }
+        .card-location { font-size: 12px; color: #4a5568; font-weight: bold; margin-bottom: 15px; }
         .buy-btn { background-color: #2b6cb0; text-align: center; color: white; text-decoration: none; padding: 8px; border-radius: 4px; font-size: 14px; font-weight: bold; display: block; }
     </style>
 </head>
 <body>
     <div class="container">
         
-        <!-- TOP BRANDING NAVBAR -->
         <div class="navbar">
             <h2 style="margin:0;">🏪 SikaExpress Marketplace</h2>
             <div class="nav-links">
@@ -52,7 +43,6 @@
         </div>
         
         <div class="layout">
-            <!-- SELL ITEM LAYER SIDEBAR -->
             <div>
                 {% if session.get('username') %}
                     <form method="POST" action="/" enctype="multipart/form-data">
@@ -62,6 +52,22 @@
                         
                         <label>Price (GHS ₵):</label>
                         <input type="number" name="price" step="0.01" placeholder="0.00" required>
+                        
+                        <!-- UPGRADED: Regional location dropdown input form element -->
+                                            <!-- UPDATED: Added Akim Oda, Koforidua, and Nsawam -->
+                        <label>Select Location:</label>
+                        <select name="location">
+                            <option value="Accra">Accra</option>
+                            <option value="Akim Oda">Akim Oda</option>
+                            <option value="Cape Coast">Cape Coast</option>
+                            <option value="Koforidua">Koforidua</option>
+                            <option value="Kumasi">Kumasi</option>
+                            <option value="Nsawam">Nsawam</option>
+                            <option value="Takoradi">Takoradi</option>
+                            <option value="Tamale">Tamale</option>
+                            <option value="Tema">Tema</option>
+                        </select>
+
                         
                         <label>Description:</label>
                         <textarea name="description" required></textarea>
@@ -79,7 +85,6 @@
                 {% endif %}
             </div>
 
-            <!-- BUY ITEMS MATRIX GRID -->
             <div>
                 <h3>🛍️ Available Items</h3>
                 <div class="grid">
@@ -90,7 +95,9 @@
                                 <h4 class="card-title">{{ product.title }}</h4>
                                 <div class="card-price">GH₵ {{ "%.2f"|format(product.price) }}</div>
                                 <p class="card-text">{{ product.description }}</p>
-                                <div class="card-seller">Seller: {{ product.seller }}</div>
+                                <div class="card-metadata">Seller: {{ product.seller }}</div>
+                                <!-- UPGRADED: Dynamic UI badge mapping layout output for item locations -->
+                                <div class="card-location">📍 {{ product.location }}</div>
                                 <a href="mailto:{{ product.seller_email }}?subject=Inquiry about {{ product.title }}" class="buy-btn">Contact Seller</a>
                             </div>
                         </div>
@@ -101,3 +108,4 @@
     </div>
 </body>
 </html>
+
