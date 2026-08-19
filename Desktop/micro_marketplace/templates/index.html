@@ -22,10 +22,11 @@
         .card-title { font-size: 18px; font-weight: bold; margin: 0 0 5px 0; }
         .card-price { color: #dd6b20; font-size: 20px; font-weight: bold; margin-bottom: 10px; }
         .card-text { color: #718096; font-size: 14px; margin: 0 0 5px 0; flex-grow: 1; }
-        .card-metadata { font-size: 12px; color: #718096; margin-bottom: 5px; font-style: italic; }
-        .card-location { font-size: 12px; color: #4a5568; font-weight: bold; margin-bottom: 15px; }
+        .card-metadata { font-size: 12px; color: #718096; margin-bottom: 3px; font-style: italic; }
         
-        /* Interactive Green WhatsApp Style Button */
+        /* Corporate Store Identification Label */
+        .card-brand { font-size: 13px; color: #2b6cb0; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .card-location { font-size: 12px; color: #4a5568; font-weight: bold; margin-bottom: 15px; }
         .pay-btn { background-color: #25D366; text-align: center; color: white; text-decoration: none; padding: 10px; border-radius: 4px; font-size: 14px; font-weight: bold; display: block; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .pay-btn:hover { background-color: #128C7E; }
     </style>
@@ -33,7 +34,6 @@
 <body>
     <div class="container">
         
-        <!-- TOP BRANDING NAVBAR -->
         <div class="navbar">
             <h2 style="margin:0;">🏪 SikaExpress Marketplace</h2>
             <div class="nav-links">
@@ -47,7 +47,6 @@
         </div>
         
         <div class="layout">
-            <!-- SELL ITEM LAYER SIDEBAR -->
             <div>
                 {% if session.get('username') %}
                     <form method="POST" action="/" enctype="multipart/form-data">
@@ -87,7 +86,6 @@
                 {% endif %}
             </div>
 
-            <!-- BUY ITEMS MATRIX GRID -->
             <div>
                 <h3>🛍️ Available Items</h3>
                 <div class="grid">
@@ -98,20 +96,17 @@
                                 <h4 class="card-title">{{ product.title }}</h4>
                                 <div class="card-price">GH₵ {{ "%.2f"|format(product.price) }}</div>
                                 <p class="card-text">{{ product.description }}</p>
-                                <div class="card-metadata">Seller: {{ product.seller }}</div>
+                                
+                                <!-- Enterprise Corporate Identification Badge Layout -->
+                                <div class="card-brand">🏬 {{ product.business_label }}</div>
+                                
+                                <div class="card-metadata">Account: @{{ product.seller }}</div>
                                 <div class="card-location">📍 {{ product.location }}</div>
                                 
-                                <!-- 🎯 DYNAMIC LINK HARDIWIRED WITH YOUR PHONE NUMBER -->
-                                                                <!-- GLOBAL API LINK: Guarantees text pre-fills on laptops, desktops, and phones -->
-                                                                <!-- UNIVERSAL LINK: Standardized text encoder for all browsers -->
-                                                                <!-- MOBILE DEEP-LINK: Forces phones to instantly open the real WhatsApp app -->
                                 <a href="whatsapp://send?phone=233558272972&text=Hello,%20I%20want%20to%20buy%20your%20product%20on%20SikaExpress." 
                                    class="pay-btn">
                                     💬 Buy via WhatsApp / MoMo
-                                </a>
-
-
-
+                                </button>
                             </div>
                         </div>
                     {% endfor %}

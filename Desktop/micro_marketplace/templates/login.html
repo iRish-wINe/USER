@@ -1,22 +1,23 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Marketplace Authentication</title>
+    <title>SikaExpress Security Gate</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f7fafc; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .auth-container { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; background-color: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 15px rgba(0,0,0,0.05); max-width: 700px; width: 100%; }
+        .auth-container { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; background-color: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 15px rgba(0,0,0,0.05); max-width: 750px; width: 100%; }
         h3 { margin-top: 0; color: #2d3748; }
-        input[type="text"], input[type="password"] { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #e2e8f0; border-radius: 4px; box-sizing: border-box; }
+        input[type="text"], input[type="password"], select { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #e2e8f0; border-radius: 4px; box-sizing: border-box; }
         button { color: white; border: none; padding: 12px; cursor: pointer; border-radius: 4px; font-weight: bold; width: 100%; }
         .login-btn { background-color: #2b6cb0; }
         .register-btn { background-color: #48bb78; }
         .error { color: #e53e3e; font-weight: bold; font-size: 14px; margin-bottom: 15px; }
+        .company-field { display: none; background-color: #f7fafc; padding: 10px; border-radius: 6px; border: 1px dashed #cbd5e0; margin-bottom: 15px; }
     </style>
 </head>
 <body>
     <div class="auth-container">
         
-        <!-- BLUE PORTAL: MEMBER LOGIN -->
+        <!-- BLUE PORTAL: MEMBER SIGN IN -->
         <form method="POST" action="/login">
             <h3>🔑 Member Login</h3>
             {% if login_error %} <div class="error">{{ login_error }}</div> {% endif %}
@@ -27,19 +28,49 @@
             <button type="submit" class="login-btn">Sign In</button>
         </form>
 
-        <!-- GREEN PORTAL: CREATE ACCOUNT (REGISTRATION) -->
+        <!-- GREEN PORTAL: ACCOUNT CREATION MATRIX -->
         <form method="POST" action="/register">
             <h3>📝 Create Account</h3>
             {% if reg_error %} <div class="error">{{ reg_error }}</div> {% endif %}
+            
             <label>Choose Username:</label>
             <input type="text" name="reg_user" required>
+            
             <label>Your Email Address:</label>
             <input type="text" name="reg_email" required>
+            
+            <!-- Account Category Selection Dropdown -->
+            <label>Account Type:</label>
+            <select name="seller_type" id="sellerTypeSelect" onchange="toggleCompanyField()">
+                <option value="Individual">Individual Vendor</option>
+                <option value="Company">Registered Company / Business Brand</option>
+            </select>
+
+            <!-- Hidden Corporate Form Box fields layer -->
+            <div id="companyBox" class="company-field">
+                <label><b>Company / Business Name:</b></label>
+                <input type="text" name="company_name" placeholder="e.g., Melcom Ghana, Samsung store">
+            </div>
+            
             <label>Create Password:</label>
             <input type="password" name="reg_pass" required>
+            
             <button type="submit" class="register-btn">Register Account</button>
         </form>
 
     </div>
+
+    <!-- JAVASCRIPT ANIMATION INTERCEPTOR LAYER -->
+    <script>
+        function toggleCompanyField() {
+            let selector = document.getElementById("sellerTypeSelect");
+            let companyBox = document.getElementById("companyBox");
+            if (selector.value === "Company") {
+                companyBox.style.display = "block";
+            } else {
+                companyBox.style.display = "none";
+            }
+        }
+    </script>
 </body>
 </html>
