@@ -4,42 +4,50 @@
     <title>SikaExpress Marketplace</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; background-color: #f7fafc; color: #2d3748; margin: 0; }
-        .container { max-width: 1000px; margin: 0 auto; }
+        .container { max-width: 1100px; margin: 0 auto; }
         .navbar { display: flex; justify-content: space-between; align-items: center; background-color: white; padding: 15px 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 20px; }
         .nav-links a { margin-left: 15px; text-decoration: none; color: #2b6cb0; font-weight: bold; }
         .nav-links a.logout { color: #e53e3e; }
         .auth-box { background-color: #ebf8ff; border: 1px solid #bee3f8; padding: 15px; border-radius: 6px; margin-bottom: 20px; text-align: center; }
         
-        /* UPGRADED: Location Filter Bar Component */
         .filter-bar { background-color: white; padding: 15px 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.03); margin-bottom: 30px; display: flex; align-items: center; gap: 15px; border: 1px solid #e2e8f0; }
-        .filter-bar select { width: auto; max-width: 250px; margin-bottom: 0; padding: 8px 12px; border: 1px solid #cbd5e0; border-radius: 4px; background-color: #fff; font-size: 14px; }
-        .filter-btn { background-color: #2b6cb0; color: white; border: none; padding: 8px 20px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 14px; }
-        .filter-btn:hover { background-color: #2b5c8f; }
+        .filter-bar select { width: auto; max-width: 250px; margin-bottom: 0; padding: 8px 12px; border: 1px solid #cbd5e0; border-radius: 4px; }
+        .filter-btn { background-color: #2b6cb0; color: white; border: none; padding: 8px 20px; border-radius: 4px; font-weight: bold; cursor: pointer; }
 
-        .layout { display: grid; grid-template-columns: 320px 1fr; gap: 40px; }
-        form.listing-form { background-color: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); height: fit-content; margin-bottom: 20px; }
+        /* 3-Column Layout: Form on Left, Catalog in Middle, Cart on Right */
+        .layout { display: grid; grid-template-columns: 280px 1fr 280px; gap: 30px; }
+        form.listing-form { background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); height: fit-content; }
         input[type="text"], input[type="number"], select, textarea, input[type="file"] { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #e2e8f0; border-radius: 4px; box-sizing: border-box; }
         textarea { height: 80px; resize: vertical; }
-        button.submit-btn { background-color: #319795; color: white; border: none; padding: 12px 20px; cursor: pointer; border-radius: 4px; font-size: 16px; width: 100%; font-weight: bold; }
-        button.submit-btn:hover { background-color: #2c7a7b; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 25px; }
+        button.submit-btn { background-color: #319795; color: white; border: none; padding: 12px; cursor: pointer; border-radius: 4px; font-size: 15px; width: 100%; font-weight: bold; }
+        
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
         .card { background-color: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.02); border: 1px solid #e2e8f0; display: flex; flex-direction: column; }
-        .card-img { width: 100%; height: 180px; object-fit: cover; background-color: #edf2f7; }
+        .card-img { width: 100%; height: 150px; object-fit: cover; background-color: #edf2f7; }
         .card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; }
-        .card-title { font-size: 18px; font-weight: bold; margin: 0 0 5px 0; }
-        .card-price { color: #dd6b20; font-size: 20px; font-weight: bold; margin-bottom: 10px; }
-        .card-text { color: #718096; font-size: 14px; margin: 0 0 5px 0; flex-grow: 1; }
-        .card-metadata { font-size: 12px; color: #718096; margin-bottom: 3px; font-style: italic; }
-        .card-brand { font-size: 13px; color: #2b6cb0; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .card-title { font-size: 16px; font-weight: bold; margin: 0 0 5px 0; }
+        .card-price { color: #dd6b20; font-size: 18px; font-weight: bold; margin-bottom: 10px; }
+        .card-text { color: #718096; font-size: 13px; margin: 0 0 10px 0; flex-grow: 1; }
+        .card-metadata { font-size: 11px; color: #718096; margin-bottom: 3px; font-style: italic; }
+        .card-brand { font-size: 12px; color: #2b6cb0; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; }
         .card-location { font-size: 12px; color: #4a5568; font-weight: bold; margin-bottom: 15px; }
-        .pay-btn { background-color: #25D366; text-align: center; color: white; text-decoration: none; padding: 10px; border-radius: 4px; font-size: 14px; font-weight: bold; display: block; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .pay-btn:hover { background-color: #128C7E; }
+        
+        /* Action Button Styles */
+        .cart-btn { background-color: #2b6cb0; text-align: center; color: white; text-decoration: none; padding: 8px; border-radius: 4px; font-size: 13px; font-weight: bold; display: block; margin-bottom: 5px; }
+        .delete-btn { background-color: #e53e3e; text-align: center; color: white; text-decoration: none; padding: 8px; border-radius: 4px; font-size: 13px; font-weight: bold; display: block; }
+        .whatsapp-btn { background-color: #25D366; text-align: center; color: white; text-decoration: none; padding: 12px; border-radius: 4px; font-size: 14px; font-weight: bold; display: block; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        
+        /* Cart Sidebar Style */
+        .cart-sidebar { background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); height: fit-content; border: 1px solid #e2e8f0; }
+        .cart-title-side { margin-top: 0; border-bottom: 20px; border-bottom: 2px solid #edf2f7; padding-bottom: 10px; font-size: 18px; }
+        .cart-item-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; color: #4a5568; }
+        .clear-cart-link { display: block; color: #718096; text-align: center; font-size: 12px; margin-top: 15px; text-decoration: none; }
     </style>
 </head>
 <body>
     <div class="container">
         
-        <!-- TOP BRANDING NAVBAR -->
+        <!-- NAVBAR -->
         <div class="navbar">
             <h2 style="margin:0;">🏪 SikaExpress Marketplace</h2>
             <div class="nav-links">
@@ -52,11 +60,11 @@
             </div>
         </div>
 
-        <!-- 🔎 NEW UPGRADED COMPONENT: Dynamic Location Search Filter Bar -->
+        <!-- FILTER BAR -->
         <form method="GET" action="/" class="filter-bar">
-            <label style="font-weight: bold; font-size: 15px; color: #4a5568;">🔍 Search Products by City:</label>
+            <label style="font-weight: bold; font-size: 14px; color: #4a5568;">🔍 Filter City:</label>
             <select name="filter_location">
-                <option value="All" {% if active_filter == 'All' %}selected{% endif %}>🌍 All Cities (Whole Ghana)</option>
+                <option value="All" {% if active_filter == 'All' %}selected{% endif %}>🌍 All Cities (Ghana)</option>
                 <option value="Accra" {% if active_filter == 'Accra' %}selected{% endif %}>Accra</option>
                 <option value="Akim Oda" {% if active_filter == 'Akim Oda' %}selected{% endif %}>Akim Oda</option>
                 <option value="Cape Coast" {% if active_filter == 'Cape Coast' %}selected{% endif %}>Cape Coast</option>
@@ -67,22 +75,17 @@
                 <option value="Tamale" {% if active_filter == 'Tamale' %}selected{% endif %}>Tamale</option>
                 <option value="Tema" {% if active_filter == 'Tema' %}selected{% endif %}>Tema</option>
             </select>
-            <button type="submit" class="filter-btn">Filter Catalog</button>
+            <button type="submit" class="filter-btn">Filter</button>
         </form>
         
         <div class="layout">
-            <!-- SELL ITEM LAYER SIDEBAR -->
+            <!-- COL 1: SELLER PANEL -->
             <div>
                 {% if session.get('username') %}
                     <form method="POST" action="/" enctype="multipart/form-data" class="listing-form">
-                        <h3>📢 List a Product</h3>
-                        <label>Product Name:</label>
-                        <input type="text" name="title" required>
-                        
-                        <label>Price (GHS ₵):</label>
-                        <input type="number" name="price" step="0.01" placeholder="0.00" required>
-                        
-                        <label>Select Location:</label>
+                        <h3>📢 List Product</h3>
+                        <input type="text" name="title" placeholder="Item Name" required>
+                        <input type="number" name="price" step="0.01" placeholder="Price (GHS)" required>
                         <select name="location">
                             <option value="Accra">Accra</option>
                             <option value="Akim Oda">Akim Oda</option>
@@ -94,24 +97,19 @@
                             <option value="Tamale">Tamale</option>
                             <option value="Tema">Tema</option>
                         </select>
-                        
-                        <label>Description:</label>
-                        <textarea name="description" required></textarea>
-                        
-                        <label>Product Image:</label>
+                        <textarea name="description" placeholder="Description" required></textarea>
                         <input type="file" name="product_image" accept="image/*" required>
-                        
-                        <button type="submit" class="submit-btn">Publish Listing</button>
+                        <button type="submit" class="submit-btn">Publish</button>
                     </form>
                 {% else %}
                     <div class="auth-box">
-                        <p>🔒 You must be logged in to list products for sale.</p>
-                        <a href="/login" class="pay-btn" style="text-align:center;">Sign In Now</a>
+                        <p>🔒 Log in to list items for sale.</p>
+                        <a href="/login" class="cart-btn">Sign In Now</a>
                     </div>
                 {% endif %}
             </div>
 
-            <!-- BUY ITEMS MATRIX GRID -->
+            <!-- COL 2: MAIN CATALOG CATALOG GRID -->
             <div>
                 <h3>🛍️ Available Items</h3>
                 <div class="grid">
@@ -122,26 +120,18 @@
                                 <h4 class="card-title">{{ product.title }}</h4>
                                 <div class="card-price">GH₵ {{ "%.2f"|format(product.price) }}</div>
                                 <p class="card-text">{{ product.description }}</p>
-                                
                                 <div class="card-brand">🏬 {{ product.business_label }}</div>
-                                <div class="card-metadata">Account: @{{ product.seller }}</div>
+                                <div class="card-metadata">Seller: @{{ product.seller }}</div>
                                 <div class="card-location">📍 {{ product.location }}</div>
                                 
-                                <a href="whatsapp://send?phone=233558272972&text=Hello,%20I%20want%20to%20buy%20your%20product%20on%20SikaExpress." 
-                                   class="pay-btn">
-                                    💬 Buy via WhatsApp / MoMo
-                                </a>
-                            </div>
-                        </div>
-                    {% else %}
-                        <!-- Visual state fallback notice logic container trigger -->
-                        <div style="grid-column: 1/-1; padding: 40px; text-align: center; background-color: white; border-radius: 8px; border: 1px dashed #cbd5e0; color: #718096;">
-                            📭 No products currently available for sale in this specific city.
-                        </div>
-                    {% endfor %}
-                </div>
-            </div>
-        </div>
-    </div>
-</body>
-</html>
+                                <!-- DYNAMIC CONTEXTUAL BUTTON ACTION ROUTING LINK PANEL -->
+                                {% if session.get('username') == product.seller %}
+                                    <!-- Vendor owns the card: Shows RED delete button -->
+                                    <a href="/delete-item/{{ product.id }}" class="delete-btn">🗑️ Delete Listing</a>
+                                {% else %}
+                                    <!-- Normal Customer views the card: Shows BLUE add button -->
+                                    <a href="/add-to-cart/{{ product.id }}" class="cart-btn">🛒 Add to Cart</a>
+                                {% endif %}
+{% else %}📭 No products available.{% endfor %}🛒 My Cart ({% if session.get('cart') %}{{ session['cart']|length }}{% else %}0{% endif %}){% if cart_items %}{% for item in cart_items %}
+• {{ item.title }}GH₵{{ "%.2f"|format(item.price) }}{% endfor %}
+Total Cost:GH₵ {{ "%.2f"|format(cart_total) }}💬 Order via WhatsAppEmpty Shopping Cart{% else %}Your cart is completely empty. Add items from the catalog grid!{% endif %}
