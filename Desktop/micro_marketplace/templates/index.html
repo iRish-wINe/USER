@@ -24,12 +24,16 @@
         .card-text { color: #718096; font-size: 14px; margin: 0 0 5px 0; flex-grow: 1; }
         .card-metadata { font-size: 12px; color: #718096; margin-bottom: 5px; font-style: italic; }
         .card-location { font-size: 12px; color: #4a5568; font-weight: bold; margin-bottom: 15px; }
-        .buy-btn { background-color: #2b6cb0; text-align: center; color: white; text-decoration: none; padding: 8px; border-radius: 4px; font-size: 14px; font-weight: bold; display: block; }
+        
+        /* Interactive Green WhatsApp Style Button */
+        .pay-btn { background-color: #25D366; text-align: center; color: white; text-decoration: none; padding: 10px; border-radius: 4px; font-size: 14px; font-weight: bold; display: block; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .pay-btn:hover { background-color: #128C7E; }
     </style>
 </head>
 <body>
     <div class="container">
         
+        <!-- TOP BRANDING NAVBAR -->
         <div class="navbar">
             <h2 style="margin:0;">🏪 SikaExpress Marketplace</h2>
             <div class="nav-links">
@@ -43,6 +47,7 @@
         </div>
         
         <div class="layout">
+            <!-- SELL ITEM LAYER SIDEBAR -->
             <div>
                 {% if session.get('username') %}
                     <form method="POST" action="/" enctype="multipart/form-data">
@@ -53,8 +58,6 @@
                         <label>Price (GHS ₵):</label>
                         <input type="number" name="price" step="0.01" placeholder="0.00" required>
                         
-                        <!-- UPGRADED: Regional location dropdown input form element -->
-                                            <!-- UPDATED: Added Akim Oda, Koforidua, and Nsawam -->
                         <label>Select Location:</label>
                         <select name="location">
                             <option value="Accra">Accra</option>
@@ -67,7 +70,6 @@
                             <option value="Tamale">Tamale</option>
                             <option value="Tema">Tema</option>
                         </select>
-
                         
                         <label>Description:</label>
                         <textarea name="description" required></textarea>
@@ -80,11 +82,12 @@
                 {% else %}
                     <div class="auth-box">
                         <p>🔒 You must be logged in to list products for sale.</p>
-                        <a href="/login" class="buy-btn" style="padding:10px;">Sign In Now</a>
+                        <a href="/login" class="pay-btn" style="text-align:center;">Sign In Now</a>
                     </div>
                 {% endif %}
             </div>
 
+            <!-- BUY ITEMS MATRIX GRID -->
             <div>
                 <h3>🛍️ Available Items</h3>
                 <div class="grid">
@@ -96,9 +99,14 @@
                                 <div class="card-price">GH₵ {{ "%.2f"|format(product.price) }}</div>
                                 <p class="card-text">{{ product.description }}</p>
                                 <div class="card-metadata">Seller: {{ product.seller }}</div>
-                                <!-- UPGRADED: Dynamic UI badge mapping layout output for item locations -->
                                 <div class="card-location">📍 {{ product.location }}</div>
-                                <a href="mailto:{{ product.seller_email }}?subject=Inquiry about {{ product.title }}" class="buy-btn">Contact Seller</a>
+                                
+                                <!-- 🎯 DYNAMIC LINK HARDIWIRED WITH YOUR PHONE NUMBER -->
+                                <a href="https://wa.me" 
+                                   target="_blank" 
+                                   class="pay-btn">
+                                    💬 Buy via WhatsApp / MoMo
+                                </a>
                             </div>
                         </div>
                     {% endfor %}
@@ -108,4 +116,3 @@
     </div>
 </body>
 </html>
-

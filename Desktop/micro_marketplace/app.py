@@ -22,7 +22,6 @@ def init_db():
             password_hash TEXT NOT NULL
         )
     """)
-    # UPGRADED: Added location column tracking to the products table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS products (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -50,7 +49,7 @@ def query_db(query, args=(), one=False):
     conn.close()
     return (rv if rv else None) if one else rv
 
-# --- ROUTES MATRIX ---
+# --- ROUTES ---
 
 @app.route("/", methods=["GET", "POST"])
 def home():
@@ -61,14 +60,13 @@ def home():
         title = request.form.get("title")
         price = request.form.get("price")
         description = request.form.get("description")
-        location = request.form.get("location") # Intercept selected location
+        location = request.form.get("location")
         file = request.files.get("product_image")
         
         if title and price and description and location and file:
             filename = secure_filename(file.filename)
             file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
             
-            # UPGRADED: Insert location variable values directly into storage query
             query_db(
                 "INSERT INTO products (title, price, description, image_file, seller, seller_email, location) VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (title, float(price), description, filename, session["username"], session["email"], location)
