@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SikaExpress Marketplace</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; background-color: #f7fafc; color: #2d3748; margin: 0; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        
+        /* Top Branding Navigation Bar */
+        .navbar { display: flex; justify-content: space-between; align-items: center; background-color: white; padding: 15px 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 30px; }
+        .nav-links a { margin-left: 15px; text-decoration: none; color: #2b6cb0; font-weight: bold; }
+        .nav-links a.logout { color: #e53e3e; }
+        .auth-box { background-color: #ebf8ff; border: 1px solid #bee3f8; padding: 15px; border-radius: 6px; margin-bottom: 20px; text-align: center; }
+
+        /* Split Screen: Form on Left, Catalog on Right */
+        .layout { display: grid; grid-template-columns: 320px 1fr; gap: 40px; }
+        form { background-color: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); height: fit-content; margin-bottom: 20px; }
+        input[type="text"], input[type="number"], textarea, input[type="file"] { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #e2e8f0; border-radius: 4px; box-sizing: border-box; }
+        textarea { height: 80px; resize: vertical; }
+        
+        button { background-color: #319795; color: white; border: none; padding: 12px 20px; cursor: pointer; border-radius: 4px; font-size: 16px; width: 100%; font-weight: bold; }
+        button:hover { background-color: #2c7a7b; }
+        
+        /* Shop Layout Matrix Grid */
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 25px; }
+        .card { background-color: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.02); border: 1px solid #e2e8f0; display: flex; flex-direction: column; }
+        .card-img { width: 100%; height: 180px; object-fit: cover; background-color: #edf2f7; }
+        .card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; }
+        .card-title { font-size: 18px; font-weight: bold; margin: 0 0 5px 0; }
+        
+        /* Local Cedi Price Color Accent */
+        .card-price { color: #dd6b20; font-size: 20px; font-weight: bold; margin-bottom: 10px; }
+        .card-text { color: #718096; font-size: 14px; margin: 0 0 5px 0; flex-grow: 1; }
+        .card-seller { font-size: 12px; color: #a0aec0; margin-bottom: 10px; font-style: italic; }
+        .buy-btn { background-color: #2b6cb0; text-align: center; color: white; text-decoration: none; padding: 8px; border-radius: 4px; font-size: 14px; font-weight: bold; display: block; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        
+        <!-- TOP BRANDING NAVBAR -->
+        <div class="navbar">
+            <h2 style="margin:0;">🏪 SikaExpress Marketplace</h2>
+            <div class="nav-links">
+                {% if session.get('username') %}
+                    <span>Welcome, <b>{{ session['username'] }}</b>!</span>
+                    <a href="/logout" class="logout">Logout</a>
+                {% else %}
+                    <a href="/login">Login / Register</a>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="layout">
+            <!-- SELL ITEM LAYER SIDEBAR -->
+            <div>
+                {% if session.get('username') %}
+                    <form method="POST" action="/" enctype="multipart/form-data">
+                        <h3>📢 List a Product</h3>
+                        <label>Product Name:</label>
+                        <input type="text" name="title" required>
+                        
+                        <label>Price (GHS ₵):</label>
+                        <input type="number" name="price" step="0.01" placeholder="0.00" required>
+                        
+                        <label>Description:</label>
+                        <textarea name="description" required></textarea>
+                        
+                        <label>Product Image:</label>
+                        <input type="file" name="product_image" accept="image/*" required>
+                        
+                        <button type="submit">Publish Listing</button>
+                    </form>
+                {% else %}
+                    <div class="auth-box">
+                        <p>🔒 You must be logged in to list products for sale.</p>
+                        <a href="/login" class="buy-btn" style="padding:10px;">Sign In Now</a>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- BUY ITEMS MATRIX GRID -->
+            <div>
+                <h3>🛍️ Available Items</h3>
+                <div class="grid">
+                    {% for product in products %}
+                        <div class="card">
+                            <img class="card-img" src="{{ url_for('static', filename='uploads/' + product.image_file) }}" alt="Product Image">
+                            <div class="card-body">
+                                <h4 class="card-title">{{ product.title }}</h4>
+                                <div class="card-price">GH₵ {{ "%.2f"|format(product.price) }}</div>
+                                <p class="card-text">{{ product.description }}</p>
+                                <div class="card-seller">Seller: {{ product.seller }}</div>
+                                <a href="mailto:{{ product.seller_email }}?subject=Inquiry about {{ product.title }}" class="buy-btn">Contact Seller</a>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

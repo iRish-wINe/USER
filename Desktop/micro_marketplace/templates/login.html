@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Marketplace Authentication</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f7fafc; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .auth-container { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; background-color: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 15px rgba(0,0,0,0.05); max-width: 700px; width: 100%; }
+        h3 { margin-top: 0; color: #2d3748; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #e2e8f0; border-radius: 4px; box-sizing: border-box; }
+        button { color: white; border: none; padding: 12px; cursor: pointer; border-radius: 4px; font-weight: bold; width: 100%; }
+        .login-btn { background-color: #2b6cb0; }
+        .register-btn { background-color: #48bb78; }
+        .error { color: #e53e3e; font-weight: bold; font-size: 14px; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        
+        <!-- BLUE PORTAL: MEMBER LOGIN -->
+        <form method="POST" action="/login">
+            <h3>🔑 Member Login</h3>
+            {% if login_error %} <div class="error">{{ login_error }}</div> {% endif %}
+            <label>Username:</label>
+            <input type="text" name="login_user" required>
+            <label>Password:</label>
+            <input type="password" name="login_pass" required>
+            <button type="submit" class="login-btn">Sign In</button>
+        </form>
+
+        <!-- GREEN PORTAL: CREATE ACCOUNT (REGISTRATION) -->
+        <form method="POST" action="/register">
+            <h3>📝 Create Account</h3>
+            {% if reg_error %} <div class="error">{{ reg_error }}</div> {% endif %}
+            <label>Choose Username:</label>
+            <input type="text" name="reg_user" required>
+            <label>Your Email Address:</label>
+            <input type="text" name="reg_email" required>
+            <label>Create Password:</label>
+            <input type="password" name="reg_pass" required>
+            <button type="submit" class="register-btn">Register Account</button>
+        </form>
+
+    </div>
+</body>
+</html>
