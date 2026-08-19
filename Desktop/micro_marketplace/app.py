@@ -1,6 +1,8 @@
 import sqlite3
 import os
 from flask import Flask, render_template, request, redirect, url_for, session
+from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 app.secret_key = "commercial_marketplace_super_secret_token"
@@ -12,12 +14,14 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 def init_db():
     conn = sqlite3.connect("marketplace.db", timeout=20)
     cursor = conn.cursor()
+    # UPGRADED: Users table now explicitly tracks individual account roles
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
             email TEXT NOT NULL,
             password_hash TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'Customer',
             seller_type TEXT NOT NULL DEFAULT 'Individual',
             company_name TEXT
         )
@@ -50,14 +54,14 @@ def query_db(query, args=(), one=False):
     conn.close()
     return (rv if rv else None) if one else rv
 
-# --- ROUTES MATRIX ---
+# --- ROUTES ---
 
 @app.route("/", methods=["GET", "POST"])
 def home():
-    from werkzeug.utils import secure_filename
     if request.method == "POST":
-        if "username" not in session:
-            return redirect(url_for("login"))
+        # Block malicious requests if a customer somehow tries to post a product form payload
+        if "username" not in session or session.get("role") != "Vendor":
+            return redirect(url_for("home"))
             
         title = request.form.get("title")
         price = request.form.get("price")
@@ -83,17 +87,13 @@ def home():
         all_products = query_db("SELECT * FROM products ORDER BY id DESC")
         selected_filter = "All"
         
-    # --- SHOPPING CART PROCESSING LAYOUT ---
     cart_items = []
     cart_total = 0.0
     whatsapp_text = "Hello, I want to buy these products on SikaExpress:%0A"
     
-    # If the customer has items in their cart session, pull their full details out of SQLite
     if 'cart' in session and session['cart']:
-        # Create a comma-separated list of question marks for our SQL query (e.g. "?,?,?")
         placeholders = ",".join("?" for _ in session['cart'])
         items_in_db = query_db(f"SELECT * FROM products WHERE id IN ({placeholders})", session['cart'])
-        
         if items_in_db:
             for item in items_in_db:
                 cart_items.append(item)
@@ -103,51 +103,19 @@ def home():
 
     return render_template("index.html", products=all_products, active_filter=selected_filter, cart_items=cart_items, cart_total=cart_total, whatsapp_text=whatsapp_text)
 
-# 🗑️ 1. VENDOR DELETE ROUTE
-@app.route("/delete-item/<int:product_id>")
-def delete_item(product_id):
-    if "username" not in session:
-        return redirect(url_for("login"))
-    
-    # Verify the item exists and check if the current user is the owner
-    product = query_db("SELECT * FROM products WHERE id = ?", (product_id,), one=True)
-    if product and product["seller"] == session["username"]:
-        query_db("DELETE FROM products WHERE id = ?", (product_id,))
-        
-    return redirect(url_for("home"))
-
-# 🛒 2. CUSTOMER ADD TO CART ROUTE
-@app.route("/add-to-cart/<int:product_id>")
-def add_to_cart(product_id):
-    if 'cart' not in session:
-        session['cart'] = []
-    
-    # Pull current cart list, append new ID, and assign it back to save session state
-    current_cart = session['cart']
-    if product_id not in current_cart:
-        current_cart.append(product_id)
-        session['cart'] = current_cart
-        
-    return redirect(url_for("home"))
-
-# 🧹 3. CUSTOMER CLEAR CART ROUTE
-@app.route("/clear-cart")
-def clear_cart():
-    session.pop('cart', None)
-    return redirect(url_for("home"))
-
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    from werkzeug.security import check_password_hash
     if request.method == "POST":
         username = request.form.get("login_user")
         password = request.form.get("login_pass")
         user_list = query_db("SELECT * FROM users WHERE username = ?", (username,))
+        
         if user_list:
-            user = user_list[0]
+            user = user_list
             if check_password_hash(user["password_hash"], password):
                 session["username"] = user["username"]
                 session["email"] = user["email"]
+                session["role"] = user["role"]  # Track role inside session memory
                 session["company_name"] = user["company_name"]
                 return redirect(url_for("home"))
         return render_template("login.html", login_error="Invalid username or password.")
@@ -155,20 +123,30 @@ def login():
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
-    from werkzeug.security import generate_password_hash
     if request.method == "POST":
         username = request.form.get("reg_user")
         email = request.form.get("reg_email")
         password = request.form.get("reg_pass")
+        role = request.form.get("role")  # Capture 'Customer' or 'Vendor'
         seller_type = request.form.get("seller_type")
         company_name = request.form.get("company_name")
-        if seller_type == "Individual":
+        
+        # Force default settings if they selected Customer
+        if role == "Customer":
+            seller_type = "Individual"
             company_name = None
+        elif role == "Vendor" and seller_type == "Individual":
+            company_name = None
+            
         try:
             hashed_pwd = generate_password_hash(password)
-            query_db("INSERT INTO users (username, email, password_hash, seller_type, company_name) VALUES (?, ?, ?, ?, ?)", (username, email, hashed_pwd, seller_type, company_name))
+            query_db(
+                "INSERT INTO users (username, email, password_hash, role, seller_type, company_name) VALUES (?, ?, ?, ?, ?, ?)", 
+                (username, email, hashed_pwd, role, seller_type, company_name)
+            )
             session["username"] = username
             session["email"] = email
+            session["role"] = role
             session["company_name"] = company_name
             return redirect(url_for("home"))
         except sqlite3.IntegrityError:

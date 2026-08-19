@@ -11,7 +11,10 @@
         .login-btn { background-color: #2b6cb0; }
         .register-btn { background-color: #48bb78; }
         .error { color: #e53e3e; font-weight: bold; font-size: 14px; margin-bottom: 15px; }
-        .company-field { display: none; background-color: #f7fafc; padding: 10px; border-radius: 6px; border: 1px dashed #cbd5e0; margin-bottom: 15px; }
+        
+        /* Form Animation Classes */
+        .vendor-options { display: none; background-color: #f7fafc; padding: 15px; border-radius: 6px; border: 1px dashed #cbd5e0; margin-bottom: 15px; }
+        .company-field { display: none; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -28,7 +31,7 @@
             <button type="submit" class="login-btn">Sign In</button>
         </form>
 
-        <!-- GREEN PORTAL: ACCOUNT CREATION MATRIX -->
+        <!-- GREEN PORTAL: DYNAMIC ROLE REGISTRATION CREATION MATRIX -->
         <form method="POST" action="/register">
             <h3>📝 Create Account</h3>
             {% if reg_error %} <div class="error">{{ reg_error }}</div> {% endif %}
@@ -39,17 +42,25 @@
             <label>Your Email Address:</label>
             <input type="text" name="reg_email" required>
             
-            <!-- Account Category Selection Dropdown -->
-            <label>Account Type:</label>
-            <select name="seller_type" id="sellerTypeSelect" onchange="toggleCompanyField()">
-                <option value="Individual">Individual Vendor</option>
-                <option value="Company">Registered Company / Business Brand</option>
+            <!-- STEP 1: CHOOSE TARGET PLATFORM ACCESS ROLE TYPE -->
+            <label>I want to:</label>
+            <select name="role" id="roleSelect" onchange="toggleRoleFields()">
+                <option value="Customer">🛒 Buy Products (Customer Account)</option>
+                <option value="Vendor">📢 Sell Products (Vendor / Corporate Account)</option>
             </select>
 
-            <!-- Hidden Corporate Form Box fields layer -->
-            <div id="companyBox" class="company-field">
-                <label><b>Company / Business Name:</b></label>
-                <input type="text" name="company_name" placeholder="e.g., Melcom Ghana, Samsung store">
+            <!-- NESTED LAYER CONTAINER: ONLY OPENS IF VENDOR ROLE IS SELECTED -->
+            <div id="vendorBlock" class="vendor-options">
+                <label>Vendor Entity Structure:</label>
+                <select name="seller_type" id="sellerTypeSelect" onchange="toggleCompanyField()">
+                    <option value="Individual">Individual Vendor</option>
+                    <option value="Company">Registered Company / Business Brand</option>
+                </select>
+
+                <div id="companyBox" class="company-field">
+                    <label><b>Company / Business Name:</b></label>
+                    <input type="text" name="company_name" placeholder="e.g., Melcom Ghana, Samsung store">
+                </div>
             </div>
             
             <label>Create Password:</label>
@@ -60,12 +71,26 @@
 
     </div>
 
-    <!-- JAVASCRIPT ANIMATION INTERCEPTOR LAYER -->
+    <!-- JAVASCRIPT ANIMATION INTERCEPTOR CONTROLLER LAYER -->
     <script>
+        function toggleRoleFields() {
+            let roleSelect = document.getElementById("roleSelect");
+            let vendorBlock = document.getElementById("vendorBlock");
+            
+            if (roleSelect.value === "Vendor") {
+                vendorBlock.style.display = "block";
+            } else {
+                vendorBlock.style.display = "none";
+                // Reset child field views if they toggle backward
+                document.getElementById("sellerTypeSelect").value = "Individual";
+                document.getElementById("companyBox").style.display = "none";
+            }
+        }
+
         function toggleCompanyField() {
-            let selector = document.getElementById("sellerTypeSelect");
+            let sellerSelect = document.getElementById("sellerTypeSelect");
             let companyBox = document.getElementById("companyBox");
-            if (selector.value === "Company") {
+            if (sellerSelect.value === "Company") {
                 companyBox.style.display = "block";
             } else {
                 companyBox.style.display = "none";

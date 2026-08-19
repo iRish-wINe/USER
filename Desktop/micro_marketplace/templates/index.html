@@ -14,7 +14,7 @@
         .filter-bar select { width: auto; max-width: 250px; margin-bottom: 0; padding: 8px 12px; border: 1px solid #cbd5e0; border-radius: 4px; }
         .filter-btn { background-color: #2b6cb0; color: white; border: none; padding: 8px 20px; border-radius: 4px; font-weight: bold; cursor: pointer; }
 
-        /* 3-Column Layout: Form on Left, Catalog in Middle, Cart on Right */
+        /* Dynamic Split Screen Grid Management */
         .layout { display: grid; grid-template-columns: 280px 1fr 280px; gap: 30px; }
         form.listing-form { background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); height: fit-content; }
         input[type="text"], input[type="number"], select, textarea, input[type="file"] { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #e2e8f0; border-radius: 4px; box-sizing: border-box; }
@@ -32,14 +32,12 @@
         .card-brand { font-size: 12px; color: #2b6cb0; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; }
         .card-location { font-size: 12px; color: #4a5568; font-weight: bold; margin-bottom: 15px; }
         
-        /* Action Button Styles */
         .cart-btn { background-color: #2b6cb0; text-align: center; color: white; text-decoration: none; padding: 8px; border-radius: 4px; font-size: 13px; font-weight: bold; display: block; margin-bottom: 5px; }
         .delete-btn { background-color: #e53e3e; text-align: center; color: white; text-decoration: none; padding: 8px; border-radius: 4px; font-size: 13px; font-weight: bold; display: block; }
         .whatsapp-btn { background-color: #25D366; text-align: center; color: white; text-decoration: none; padding: 12px; border-radius: 4px; font-size: 14px; font-weight: bold; display: block; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         
-        /* Cart Sidebar Style */
         .cart-sidebar { background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); height: fit-content; border: 1px solid #e2e8f0; }
-        .cart-title-side { margin-top: 0; border-bottom: 20px; border-bottom: 2px solid #edf2f7; padding-bottom: 10px; font-size: 18px; }
+        .cart-title-side { margin-top: 0; border-bottom: 2px solid #edf2f7; padding-bottom: 10px; font-size: 18px; }
         .cart-item-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; color: #4a5568; }
         .clear-cart-link { display: block; color: #718096; text-align: center; font-size: 12px; margin-top: 15px; text-decoration: none; }
     </style>
@@ -79,37 +77,44 @@
         </form>
         
         <div class="layout">
-            <!-- COL 1: SELLER PANEL -->
+            <!-- COL 1: CONTEXTUAL ROLE-BASED PANEL WRAPPER -->
             <div>
                 {% if session.get('username') %}
-                    <form method="POST" action="/" enctype="multipart/form-data" class="listing-form">
-                        <h3>📢 List Product</h3>
-                        <input type="text" name="title" placeholder="Item Name" required>
-                        <input type="number" name="price" step="0.01" placeholder="Price (GHS)" required>
-                        <select name="location">
-                            <option value="Accra">Accra</option>
-                            <option value="Akim Oda">Akim Oda</option>
-                            <option value="Cape Coast">Cape Coast</option>
-                            <option value="Koforidua">Koforidua</option>
-                            <option value="Kumasi">Kumasi</option>
-                            <option value="Nsawam">Nsawam</option>
-                            <option value="Takoradi">Takoradi</option>
-                            <option value="Tamale">Tamale</option>
-                            <option value="Tema">Tema</option>
-                        </select>
-                        <textarea name="description" placeholder="Description" required></textarea>
-                        <input type="file" name="product_image" accept="image/*" required>
-                        <button type="submit" class="submit-btn">Publish</button>
-                    </form>
+                    <!-- UPGRADED: Only displays upload forms if account type is explicitly a Seller/Vendor -->
+                    {% if session.get('role') == 'Vendor' %}
+                        <form method="POST" action="/" enctype="multipart/form-data" class="listing-form">
+                            <h3>📢 List Product</h3>
+                            <input type="text" name="title" placeholder="Item Name" required>
+                            <input type="number" name="price" step="0.01" placeholder="Price (GHS)" required>
+                            <select name="location">
+                                <option value="Accra">Accra</option>
+                                <option value="Akim Oda">Akim Oda</option>
+                                <option value="Cape Coast">Cape Coast</option>
+                                <option value="Koforidua">Koforidua</option>
+                                <option value="Kumasi">Kumasi</option>
+                                <option value="Nsawam">Nsawam</option>
+                                <option value="Takoradi">Takoradi</option>
+                                <option value="Tamale">Tamale</option>
+                                <option value="Tema">Tema</option>
+                            </select>
+                            <textarea name="description" placeholder="Description" required></textarea>
+                            <input type="file" name="product_image" accept="image/*" required>
+                            <button type="submit" class="submit-btn">Publish</button>
+                        </form>
+                    {% else %}
+                        <div class="auth-box" style="background-color: #f7fafc; border-color: #e2e8f0;">
+                            <p>👤 You are logged into a <b>Customer Account</b>. Browse the catalog items on the right!</p>
+                        </div>
+                    {% endif %}
                 {% else %}
                     <div class="auth-box">
-                        <p>🔒 Log in to list items for sale.</p>
-                        <a href="/login" class="cart-btn">Sign In Now</a>
+                        <p>🔒 Log in to list items for sale or manage carts.</p>
+                        <a href="/login" class="cart-btn">Sign In / Register</a>
                     </div>
                 {% endif %}
             </div>
 
-            <!-- COL 2: MAIN CATALOG CATALOG GRID -->
+            <!-- COL 2: MAIN CATALOG GRID -->
             <div>
                 <h3>🛍️ Available Items</h3>
                 <div class="grid">
@@ -124,14 +129,7 @@
                                 <div class="card-metadata">Seller: @{{ product.seller }}</div>
                                 <div class="card-location">📍 {{ product.location }}</div>
                                 
-                                <!-- DYNAMIC CONTEXTUAL BUTTON ACTION ROUTING LINK PANEL -->
                                 {% if session.get('username') == product.seller %}
-                                    <!-- Vendor owns the card: Shows RED delete button -->
-                                    <a href="/delete-item/{{ product.id }}" class="delete-btn">🗑️ Delete Listing</a>
-                                {% else %}
-                                    <!-- Normal Customer views the card: Shows BLUE add button -->
-                                    <a href="/add-to-cart/{{ product.id }}" class="cart-btn">🛒 Add to Cart</a>
-                                {% endif %}
-{% else %}📭 No products available.{% endfor %}🛒 My Cart ({% if session.get('cart') %}{{ session['cart']|length }}{% else %}0{% endif %}){% if cart_items %}{% for item in cart_items %}
-• {{ item.title }}GH₵{{ "%.2f"|format(item.price) }}{% endfor %}
-Total Cost:GH₵ {{ "%.2f"|format(cart_total) }}💬 Order via WhatsAppEmpty Shopping Cart{% else %}Your cart is completely empty. Add items from the catalog grid!{% endif %}
+🗑️ Delete Listing{% else %}🛒 Add to Cart{% endif %}{% else %}📭 No products available.{% endfor %}
+🛒 My Cart ({% if session.get('cart') %}{{ session['cart']|length }}{% else %}0{% endif %}){% if cart_items %}{% for item in cart_items %}• {{ item.title }}GH₵{{ "%.2f"|format(item.price) }}{% endfor %}Total Cost:GH₵ {{ "%.2f"|format(cart_total) }}
+💬 Order via WhatsAppEmpty Shopping Cart{% else %}Your cart is completely empty. Add items from the catalog grid!{% endif %}
