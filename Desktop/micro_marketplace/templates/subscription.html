@@ -39,6 +39,7 @@
         <div class="intro">
             <h1>Choose the right plan for your store</h1>
             <p>Your new vendor account includes two months of Premium access at no cost.</p>
+            {% if requested %}<p class="notice">Your upgrade request was recorded. Confirm payment in WhatsApp, then Biz Hub will review and approve your account.</p>{% endif %}
         </div>
         <div class="plans">
             <section class="plan {% if not subscription.is_premium and not subscription.trial %}current{% endif %}">
@@ -58,7 +59,10 @@
                 <div class="price">GH₵ 30 / month</div>
                 <ul><li>Unlimited listings</li><li>Registered Company badge</li><li>Priority WhatsApp presentation</li></ul>
                 {% if payment_number %}
-                    <a class="plan-action" href="https://wa.me/{{ payment_number }}?text={{ payment_text }}" target="_blank" rel="noopener">Request Premium upgrade</a>
+                    <form method="POST" action="{{ url_for('request_premium') }}">
+                        <button class="plan-action" type="submit">Request Premium upgrade</button>
+                    </form>
+                    <a href="https://wa.me/{{ payment_number }}?text={{ payment_text }}" target="_blank" rel="noopener">Open WhatsApp contact</a>
                 {% else %}
                     <span class="plan-action">Payment contact coming soon</span>
                 {% endif %}

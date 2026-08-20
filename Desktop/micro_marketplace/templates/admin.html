@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Biz Hub Admin Dashboard</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f7fafc; color: #2d3748; margin: 0; padding: 30px; }
+        .container { max-width: 1100px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        a { color: #2b6cb0; font-weight: bold; text-decoration: none; }
+        .logout { color: #e53e3e; }
+        .table-wrap { overflow-x: auto; background: white; border: 1px solid #e2e8f0; border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; min-width: 760px; }
+        th, td { text-align: left; padding: 14px; border-bottom: 1px solid #edf2f7; vertical-align: middle; }
+        th { background: #edf2f7; }
+        .badge { display: inline-block; padding: 4px 8px; border-radius: 999px; background: #bee3f8; color: #2a4365; font-size: 12px; font-weight: bold; }
+        .pending { background: #feebc8; color: #7b341e; }
+        .approve { padding: 8px 12px; border: 0; border-radius: 4px; background: #319795; color: white; font-weight: bold; cursor: pointer; }
+        .muted { color: #718096; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header><h1>Biz Hub Admin Dashboard</h1><a class="logout" href="{{ url_for('admin_logout') }}">Admin Logout</a></header>
+        <p class="muted">Review payment in WhatsApp, then approve Premium for 30 days.</p>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Vendor</th><th>Contact</th><th>Plan</th><th>Listings</th><th>Request</th><th>Action</th></tr></thead>
+                <tbody>
+                    {% for vendor in vendors %}
+                        {% set status = subscription_status(vendor) %}
+                        <tr>
+                            <td><strong>{{ vendor.username }}</strong><br><span class="muted">{{ vendor.company_name or 'Individual Vendor' }}</span></td>
+                            <td>{{ vendor.email }}<br>{{ vendor.whatsapp_number or 'No WhatsApp number' }}</td>
+                            <td><span class="badge">{{ status.name }}</span>{% if status.expires %}<br><span class="muted">until {{ status.expires }}</span>{% endif %}</td>
+                            <td>{{ listing_counts.get(vendor.username, 0) }}</td>
+                            <td>{% if vendor.upgrade_requested_at %}<span class="badge pending">Payment review requested</span>{% else %}<span class="muted">No request</span>{% endif %}</td>
+                            <td>
+                                <form method="POST" action="{{ url_for('approve_premium', user_id=vendor.id) }}">
+                                    <button class="approve" type="submit">Approve Premium</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% else %}<tr><td colspan="6">No vendor accounts yet.</td></tr>{% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

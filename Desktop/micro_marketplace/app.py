@@ -28,7 +28,8 @@ def init_db():
             whatsapp_number TEXT,
             plan TEXT NOT NULL DEFAULT 'basic',
             trial_started_at TEXT,
-            subscription_expires_at TEXT
+            subscription_expires_at TEXT,
+            upgrade_requested_at TEXT
         )
     """)
     cursor.execute("""
@@ -55,6 +56,8 @@ def init_db():
         cursor.execute("ALTER TABLE users ADD COLUMN trial_started_at TEXT")
     if "subscription_expires_at" not in user_columns:
         cursor.execute("ALTER TABLE users ADD COLUMN subscription_expires_at TEXT")
+    if "upgrade_requested_at" not in user_columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN upgrade_requested_at TEXT")
     product_columns = {row[1] for row in cursor.execute("PRAGMA table_info(products)")}
     if "seller_whatsapp" not in product_columns:
         cursor.execute("ALTER TABLE products ADD COLUMN seller_whatsapp TEXT")
@@ -87,6 +90,12 @@ def subscription_status(user):
     if premium_active:
         return {"name": "Premium Store", "is_premium": True, "trial": False, "expires": trial_expiry.strftime("%d %b %Y")}
     return {"name": "Basic", "is_premium": False, "trial": False, "expires": None}
+
+def admin_configured():
+    return bool(os.environ.get("BIZ_HUB_ADMIN_USERNAME") and os.environ.get("BIZ_HUB_ADMIN_PASSWORD"))
+
+def is_admin():
+    return session.get("is_admin") is True
 
 def query_db(query, args=(), one=False):
     conn = sqlite3.connect("marketplace.db", timeout=20)
@@ -223,9 +232,48 @@ def subscription():
     if not user_list:
         session.clear()
         return redirect(url_for("login"))
-    payment_number = normalize_whatsapp_number(os.environ.get("BIZ_HUB_PAYMENT_WHATSAPP"))
+    payment_number = normalize_whatsapp_number(os.environ.get("BIZ_HUB_PAYMENT_WHATSAPP", "233558272972"))
     payment_text = quote(f"Hello Biz Hub, I want to upgrade my {session['username']} account to Premium Store.")
-    return render_template("subscription.html", user=user_list[0], subscription=subscription_status(user_list[0]), payment_number=payment_number, payment_text=payment_text)
+    return render_template("subscription.html", user=user_list[0], subscription=subscription_status(user_list[0]), payment_number=payment_number, payment_text=payment_text, requested=request.args.get("requested") == "1")
+
+@app.route("/request-premium", methods=["POST"])
+def request_premium():
+    if "username" not in session or session.get("role") != "Vendor":
+        return redirect(url_for("login"))
+    query_db("UPDATE users SET upgrade_requested_at = ? WHERE username = ?", (datetime.now(timezone.utc).isoformat(), session["username"]))
+    return redirect(url_for("subscription", requested="1"))
+
+@app.route("/admin/login", methods=["GET", "POST"])
+def admin_login():
+    if request.method == "POST":
+        if not admin_configured():
+            return render_template("admin_login.html", admin_error="Admin credentials are not configured.")
+        if request.form.get("username") == os.environ.get("BIZ_HUB_ADMIN_USERNAME") and request.form.get("password") == os.environ.get("BIZ_HUB_ADMIN_PASSWORD"):
+            session["is_admin"] = True
+            return redirect(url_for("admin_dashboard"))
+        return render_template("admin_login.html", admin_error="Invalid admin credentials.")
+    return render_template("admin_login.html", admin_configured=admin_configured())
+
+@app.route("/admin")
+def admin_dashboard():
+    if not is_admin():
+        return redirect(url_for("admin_login"))
+    vendors = query_db("SELECT * FROM users WHERE role = 'Vendor' ORDER BY COALESCE(upgrade_requested_at, '') DESC, username")
+    listing_counts = {row["seller"]: row["count"] for row in query_db("SELECT seller, COUNT(*) AS count FROM products GROUP BY seller")}
+    return render_template("admin.html", vendors=vendors, subscription_status=subscription_status, listing_counts=listing_counts)
+
+@app.route("/admin/approve-premium/<int:user_id>", methods=["POST"])
+def approve_premium(user_id):
+    if not is_admin():
+        return redirect(url_for("admin_login"))
+    expiry = datetime.now(timezone.utc) + timedelta(days=30)
+    query_db("UPDATE users SET plan = 'premium', subscription_expires_at = ?, upgrade_requested_at = NULL WHERE id = ? AND role = 'Vendor'", (expiry.isoformat(), user_id))
+    return redirect(url_for("admin_dashboard"))
+
+@app.route("/admin/logout")
+def admin_logout():
+    session.pop("is_admin", None)
+    return redirect(url_for("admin_login"))
 
 @app.route("/settings", methods=["GET", "POST"])
 def settings():
