@@ -162,6 +162,46 @@ def clear_cart():
     session.pop('cart', None)
     return redirect(url_for("home"))
 
+@app.route("/settings", methods=["GET", "POST"])
+def settings():
+    if "username" not in session:
+        return redirect(url_for("login"))
+
+    user_list = query_db("SELECT * FROM users WHERE username = ?", (session["username"],))
+    if not user_list:
+        session.clear()
+        return redirect(url_for("login"))
+    user = user_list[0]
+
+    if request.method == "POST":
+        email = request.form.get("email", "").strip()
+        whatsapp_number = normalize_whatsapp_number(request.form.get("whatsapp_number"))
+        company_name = request.form.get("company_name", "").strip() or None
+        new_password = request.form.get("new_password", "")
+        confirm_password = request.form.get("confirm_password", "")
+
+        if not email:
+            return render_template("settings.html", user=user, settings_error="Email is required.")
+        if user["role"] == "Vendor" and not whatsapp_number:
+            return render_template("settings.html", user=user, settings_error="Vendor accounts need a WhatsApp number for payments.")
+        if new_password and new_password != confirm_password:
+            return render_template("settings.html", user=user, settings_error="The new passwords do not match.")
+
+        password_hash = generate_password_hash(new_password) if new_password else user["password_hash"]
+        if user["role"] != "Vendor":
+            company_name = None
+            whatsapp_number = None
+        query_db(
+            "UPDATE users SET email = ?, password_hash = ?, company_name = ?, whatsapp_number = ? WHERE username = ?",
+            (email, password_hash, company_name, whatsapp_number, session["username"])
+        )
+        session["email"] = email
+        session["company_name"] = company_name
+        session["whatsapp_number"] = whatsapp_number
+        return redirect(url_for("settings", updated="1"))
+
+    return render_template("settings.html", user=user, updated=request.args.get("updated") == "1")
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
