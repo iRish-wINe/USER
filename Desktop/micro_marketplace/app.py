@@ -38,6 +38,7 @@ def init_db():
             seller_whatsapp TEXT,
             location TEXT NOT NULL DEFAULT 'Accra',
             business_label TEXT NOT NULL DEFAULT 'Individual Vendor'
+            ,category TEXT NOT NULL DEFAULT 'Other'
         )
     """)
     user_columns = {row[1] for row in cursor.execute("PRAGMA table_info(users)")}
@@ -46,6 +47,8 @@ def init_db():
     product_columns = {row[1] for row in cursor.execute("PRAGMA table_info(products)")}
     if "seller_whatsapp" not in product_columns:
         cursor.execute("ALTER TABLE products ADD COLUMN seller_whatsapp TEXT")
+    if "category" not in product_columns:
+        cursor.execute("ALTER TABLE products ADD COLUMN category TEXT NOT NULL DEFAULT 'Other'")
     conn.commit()
     conn.close()
 
@@ -76,6 +79,7 @@ def home():
         title = request.form.get("title")
         price = request.form.get("price")
         description = request.form.get("description")
+        category = request.form.get("category", "Other")
         location = request.form.get("location")
         file = request.files.get("product_image")
         
@@ -85,13 +89,14 @@ def home():
             b_label = session.get("company_name") if session.get("company_name") else "Individual Vendor"
             
             query_db(
-                "INSERT INTO products (title, price, description, image_file, seller, seller_email, seller_whatsapp, location, business_label) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (title, float(price), description, filename, session["username"], session["email"], session.get("whatsapp_number"), location, b_label)
+                "INSERT INTO products (title, price, description, image_file, seller, seller_email, seller_whatsapp, location, business_label, category) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (title, float(price), description, filename, session["username"], session["email"], session.get("whatsapp_number"), location, b_label, category)
             )
             return redirect(url_for("home"))
             
     selected_filter = request.args.get("filter_location", "All")
     company_search = request.args.get("company_search", "").strip()
+    selected_category = request.args.get("category", "All")
     product_conditions = []
     product_args = []
     if selected_filter != "All":
@@ -101,6 +106,9 @@ def home():
         product_conditions.append("(business_label LIKE ? OR seller LIKE ?)")
         search_pattern = f"%{company_search}%"
         product_args.extend([search_pattern, search_pattern])
+    if selected_category != "All":
+        product_conditions.append("category = ?")
+        product_args.append(selected_category)
     product_query = "SELECT * FROM products"
     if product_conditions:
         product_query += " WHERE " + " AND ".join(product_conditions)
@@ -136,7 +144,8 @@ def home():
         message += f"\nTotal Cost: GH₵{seller_order['total']:.2f}. Let's arrange MoMo payment!"
         seller_order["whatsapp_text"] = quote(message)
 
-    return render_template("index.html", products=all_products, active_filter=selected_filter, company_search=company_search, cart_items=cart_items, cart_total=cart_total, seller_orders=seller_orders.values())
+    categories = ["Phones & Accessories", "Groceries", "Clothing", "Books", "Beauty & Personal Care", "Home & Kitchen", "Electronics", "Other"]
+    return render_template("index.html", products=all_products, active_filter=selected_filter, company_search=company_search, selected_category=selected_category, categories=categories, cart_items=cart_items, cart_total=cart_total, seller_orders=seller_orders.values())
 
 @app.route("/delete-item/<int:product_id>")
 def delete_item(product_id):
