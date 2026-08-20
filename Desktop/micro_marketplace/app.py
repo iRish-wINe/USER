@@ -1,5 +1,6 @@
 import sqlite3
 import os
+from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
 from flask import Flask, render_template, request, redirect, url_for, session
 from werkzeug.utils import secure_filename
@@ -7,6 +8,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 app.secret_key = "commercial_marketplace_super_secret_token"
+PRODUCT_CATEGORIES = ["Phones & Accessories", "Groceries", "Clothing", "Books", "Beauty & Personal Care", "Home & Kitchen", "Electronics", "Other"]
 
 UPLOAD_FOLDER = os.path.join("static", "uploads")
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
@@ -23,7 +25,10 @@ def init_db():
             role TEXT NOT NULL DEFAULT 'Customer',
             seller_type TEXT NOT NULL DEFAULT 'Individual',
             company_name TEXT,
-            whatsapp_number TEXT
+            whatsapp_number TEXT,
+            plan TEXT NOT NULL DEFAULT 'basic',
+            trial_started_at TEXT,
+            subscription_expires_at TEXT
         )
     """)
     cursor.execute("""
@@ -44,11 +49,23 @@ def init_db():
     user_columns = {row[1] for row in cursor.execute("PRAGMA table_info(users)")}
     if "whatsapp_number" not in user_columns:
         cursor.execute("ALTER TABLE users ADD COLUMN whatsapp_number TEXT")
+    if "plan" not in user_columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN plan TEXT NOT NULL DEFAULT 'basic'")
+    if "trial_started_at" not in user_columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN trial_started_at TEXT")
+    if "subscription_expires_at" not in user_columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN subscription_expires_at TEXT")
     product_columns = {row[1] for row in cursor.execute("PRAGMA table_info(products)")}
     if "seller_whatsapp" not in product_columns:
         cursor.execute("ALTER TABLE products ADD COLUMN seller_whatsapp TEXT")
     if "category" not in product_columns:
         cursor.execute("ALTER TABLE products ADD COLUMN category TEXT NOT NULL DEFAULT 'Other'")
+    trial_start = datetime.now(timezone.utc)
+    trial_expiry = trial_start + timedelta(days=61)
+    cursor.execute(
+        "UPDATE users SET trial_started_at = ?, subscription_expires_at = ? WHERE role = 'Vendor' AND trial_started_at IS NULL",
+        (trial_start.isoformat(), trial_expiry.isoformat())
+    )
     conn.commit()
     conn.close()
 
@@ -59,6 +76,17 @@ def normalize_whatsapp_number(number):
     if digits.startswith("0"):
         digits = "233" + digits[1:]
     return digits
+
+def subscription_status(user):
+    now = datetime.now(timezone.utc)
+    trial_expiry = datetime.fromisoformat(user["subscription_expires_at"]) if user["subscription_expires_at"] else None
+    trial_active = user["role"] == "Vendor" and trial_expiry and trial_expiry > now and user["plan"] == "basic"
+    premium_active = user["role"] == "Vendor" and ((user["plan"] == "premium" and trial_expiry and trial_expiry > now) or trial_active)
+    if trial_active:
+        return {"name": "Free trial", "is_premium": True, "trial": True, "expires": trial_expiry.strftime("%d %b %Y")}
+    if premium_active:
+        return {"name": "Premium Store", "is_premium": True, "trial": False, "expires": trial_expiry.strftime("%d %b %Y")}
+    return {"name": "Basic", "is_premium": False, "trial": False, "expires": None}
 
 def query_db(query, args=(), one=False):
     conn = sqlite3.connect("marketplace.db", timeout=20)
@@ -75,6 +103,11 @@ def home():
     if request.method == "POST":
         if "username" not in session or session.get("role") != "Vendor":
             return redirect(url_for("home"))
+        vendor = query_db("SELECT * FROM users WHERE username = ?", (session["username"],))[0]
+        vendor_subscription = subscription_status(vendor)
+        listing_count = query_db("SELECT COUNT(*) AS count FROM products WHERE seller = ?", (session["username"],))[0]["count"]
+        if not vendor_subscription["is_premium"] and listing_count >= 3:
+            return redirect(url_for("home", listing_error="Basic accounts can list up to 3 products. Upgrade to Premium for unlimited listings."))
             
         title = request.form.get("title")
         price = request.form.get("price")
@@ -86,7 +119,7 @@ def home():
         if title and price and description and location and file:
             filename = secure_filename(file.filename)
             file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
-            b_label = session.get("company_name") if session.get("company_name") else "Individual Vendor"
+            b_label = session.get("company_name") if vendor_subscription["is_premium"] and session.get("company_name") else "Individual Vendor"
             
             query_db(
                 "INSERT INTO products (title, price, description, image_file, seller, seller_email, seller_whatsapp, location, business_label, category) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -97,6 +130,7 @@ def home():
     selected_filter = request.args.get("filter_location", "All")
     company_search = request.args.get("company_search", "").strip()
     selected_category = request.args.get("category", "All")
+    listing_error = request.args.get("listing_error")
     product_conditions = []
     product_args = []
     if selected_filter != "All":
@@ -144,8 +178,18 @@ def home():
         message += f"\nTotal Cost: GH₵{seller_order['total']:.2f}. Let's arrange MoMo payment!"
         seller_order["whatsapp_text"] = quote(message)
 
-    categories = ["Phones & Accessories", "Groceries", "Clothing", "Books", "Beauty & Personal Care", "Home & Kitchen", "Electronics", "Other"]
-    return render_template("index.html", products=all_products, active_filter=selected_filter, company_search=company_search, selected_category=selected_category, categories=categories, cart_items=cart_items, cart_total=cart_total, seller_orders=seller_orders.values())
+    premium_sellers = {row["username"] for row in query_db("SELECT username FROM users WHERE role = 'Vendor' AND plan = 'premium' AND subscription_expires_at > ?", (datetime.now(timezone.utc).isoformat(),))}
+    trial_sellers = {row["username"] for row in query_db("SELECT username FROM users WHERE role = 'Vendor' AND plan = 'basic' AND subscription_expires_at > ?", (datetime.now(timezone.utc).isoformat(),))}
+    premium_sellers.update(trial_sellers)
+    for seller_order in seller_orders.values():
+        seller_order["priority"] = seller_order["seller"] in premium_sellers
+    vendor_subscription = None
+    listing_count = 0
+    if session.get("role") == "Vendor":
+        vendor = query_db("SELECT * FROM users WHERE username = ?", (session["username"],))[0]
+        vendor_subscription = subscription_status(vendor)
+        listing_count = query_db("SELECT COUNT(*) AS count FROM products WHERE seller = ?", (session["username"],))[0]["count"]
+    return render_template("index.html", products=all_products, active_filter=selected_filter, company_search=company_search, selected_category=selected_category, categories=PRODUCT_CATEGORIES, cart_items=cart_items, cart_total=cart_total, seller_orders=sorted(seller_orders.values(), key=lambda order: not order["priority"]), vendor_subscription=vendor_subscription, listing_count=listing_count, listing_error=listing_error, premium_sellers=premium_sellers)
 
 @app.route("/delete-item/<int:product_id>")
 def delete_item(product_id):
@@ -170,6 +214,18 @@ def add_to_cart(product_id):
 def clear_cart():
     session.pop('cart', None)
     return redirect(url_for("home"))
+
+@app.route("/subscription")
+def subscription():
+    if "username" not in session:
+        return redirect(url_for("login"))
+    user_list = query_db("SELECT * FROM users WHERE username = ?", (session["username"],))
+    if not user_list:
+        session.clear()
+        return redirect(url_for("login"))
+    payment_number = normalize_whatsapp_number(os.environ.get("BIZ_HUB_PAYMENT_WHATSAPP"))
+    payment_text = quote(f"Hello Biz Hub, I want to upgrade my {session['username']} account to Premium Store.")
+    return render_template("subscription.html", user=user_list[0], subscription=subscription_status(user_list[0]), payment_number=payment_number, payment_text=payment_text)
 
 @app.route("/settings", methods=["GET", "POST"])
 def settings():
@@ -209,7 +265,7 @@ def settings():
         session["whatsapp_number"] = whatsapp_number
         return redirect(url_for("settings", updated="1"))
 
-    return render_template("settings.html", user=user, updated=request.args.get("updated") == "1")
+    return render_template("settings.html", user=user, subscription=subscription_status(user), updated=request.args.get("updated") == "1")
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -249,7 +305,9 @@ def register():
             return render_template("login.html", reg_error="Vendor accounts need a WhatsApp number to receive payments.")
         try:
             hashed_pwd = generate_password_hash(password)
-            query_db("INSERT INTO users (username, email, password_hash, role, seller_type, company_name, whatsapp_number) VALUES (?, ?, ?, ?, ?, ?, ?)", (username, email, hashed_pwd, role, seller_type, company_name, whatsapp_number))
+            trial_started_at = datetime.now(timezone.utc)
+            trial_expires_at = trial_started_at + timedelta(days=61)
+            query_db("INSERT INTO users (username, email, password_hash, role, seller_type, company_name, whatsapp_number, plan, trial_started_at, subscription_expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (username, email, hashed_pwd, role, seller_type, company_name, whatsapp_number, "basic", trial_started_at.isoformat() if role == "Vendor" else None, trial_expires_at.isoformat() if role == "Vendor" else None))
             session["username"] = username
             session["email"] = email
             session["role"] = role

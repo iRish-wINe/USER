@@ -12,6 +12,8 @@
         .nav-links a.logout { color: #e53e3e; }
         .theme-toggle { background: transparent; border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-left: 15px; }
         .auth-box { background-color: var(--soft-bg); border: 1px solid var(--border); padding: 15px; border-radius: 6px; margin-bottom: 20px; text-align: center; }
+        .plan-box { background-color: var(--soft-bg); border: 1px solid var(--border); padding: 12px; border-radius: 6px; margin-bottom: 20px; font-size: 13px; }
+        .listing-error { background-color: #fed7d7; color: #822727; border: 1px solid #fc8181; padding: 12px; border-radius: 6px; margin-bottom: 15px; font-weight: bold; }
         .filter-bar { background-color: var(--surface); padding: 15px 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.12); margin-bottom: 30px; display: flex; align-items: center; gap: 15px; border: 1px solid var(--border); }
         .filter-bar select, .filter-bar input { width: auto; margin-bottom: 0; padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px; background-color: var(--input-bg); color: var(--text); }
         .filter-bar input { flex: 1; min-width: 180px; }
@@ -82,6 +84,8 @@
         <div class="layout">
             <div>
                 {% if session.get('username') and session.get('role') == 'Vendor' %}
+                    <div class="plan-box"><b>{{ vendor_subscription.name }}</b>{% if vendor_subscription.trial %} · Premium trial ends {{ vendor_subscription.expires }}{% elif vendor_subscription.is_premium %} · Renews {{ vendor_subscription.expires }}{% endif %}<br>Listings: {{ listing_count }}{% if not vendor_subscription.is_premium %}/3{% else %} · Unlimited{% endif %} · <a href="{{ url_for('subscription') }}">View plans</a></div>
+                    {% if listing_error %}<div class="listing-error">{{ listing_error }}</div>{% endif %}
                     <form method="POST" action="{{ url_for('home') }}" enctype="multipart/form-data" class="listing-form">
                         <h3>📢 List Product</h3>
                         <input type="text" name="title" placeholder="Item Name" required>
@@ -114,7 +118,7 @@
                                 <h3 class="card-title">{{ product.title }}</h3>
                                 <div class="card-price">GH₵ {{ "%.2f"|format(product.price) }}</div>
                                 <p class="card-text">{{ product.description }}</p>
-                                <div class="card-brand">🏬 <a href="{{ url_for('home', company_search=product.seller, filter_location=active_filter, category=selected_category) }}">{{ product.business_label }}</a></div>
+                                <div class="card-brand">{% if product.seller in premium_sellers %}🏬 <a href="{{ url_for('home', company_search=product.seller, filter_location=active_filter, category=selected_category) }}">{{ product.business_label }}</a>{% else %}👤 <a href="{{ url_for('home', company_search=product.seller, filter_location=active_filter, category=selected_category) }}">Individual Vendor</a>{% endif %}</div>
                                 <div class="card-metadata">Category: {{ product.category }}</div>
                                 <div class="card-metadata">Seller: @{{ product.seller }}</div>
                                 <div class="card-location">📍 {{ product.location }}</div>
