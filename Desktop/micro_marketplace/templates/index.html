@@ -10,7 +10,8 @@
         :root[data-theme="dark"] { color-scheme: dark; --page-bg: #17202b; --surface: #243140; --text: #f7fafc; --muted: #c0cad6; --border: #405163; --input-bg: #1d2935; --soft-bg: #20384b; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; background-color: var(--page-bg); color: var(--text); margin: 0; }
         .container { max-width: 1100px; margin: 0 auto; }
-        .brand-logo { width: 250px; height: auto; display: block; }
+        .brand-logo { width: 190px; height: auto; display: block; }
+        :root[data-theme="dark"] .brand-logo { background: #ffffff; border-radius: 8px; }
         .navbar { display: flex; justify-content: space-between; align-items: center; background-color: var(--surface); padding: 15px 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.12); margin-bottom: 20px; }
         .nav-links a { margin-left: 15px; text-decoration: none; color: #2b6cb0; font-weight: bold; }
         .nav-links a.logout { color: #e53e3e; }
@@ -37,6 +38,7 @@
         .card-text { color: var(--muted); font-size: 13px; margin: 0 0 10px 0; flex-grow: 1; }
         .card-metadata { font-size: 11px; color: var(--muted); margin-bottom: 3px; font-style: italic; }
         .card-brand { font-size: 12px; color: #2b6cb0; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; }
+        .verified-badge { display: inline-block; margin-left: 5px; padding: 2px 6px; border-radius: 10px; background: #bee3f8; color: #1a365d; font-size: 10px; text-transform: none; vertical-align: middle; }
         .card-location { font-size: 12px; color: #4a5568; font-weight: bold; margin-bottom: 15px; }
         .card-actions { display: flex; flex-direction: column; gap: 10px; margin-top: auto; width: 100%; }
         .cart-btn, .pay-btn, .delete-btn, .whatsapp-btn { text-align: center; color: white; text-decoration: none; padding: 10px; border-radius: 4px; font-size: 13px; font-weight: bold; display: block; width: 100%; box-sizing: border-box; border: none; }
@@ -137,7 +139,7 @@
                                 <h3 class="card-title">{{ product.title }}</h3>
                                 <div class="card-price">GH₵ {{ "%.2f"|format(product.price) }}</div>
                                 <p class="card-text">{{ product.description }}</p>
-                                <div class="card-brand">{% set seller_logo = (vendor_logos|default({})).get(product.seller) %}{% if seller_logo %}<img class="seller-logo" src="{{ url_for('static', filename='uploads/' + seller_logo) }}" alt="{{ product.business_label }} logo">{% endif %}{% if product.seller in premium_sellers %}🏬 <a href="{{ url_for('home', company_search=product.seller, filter_location=active_filter, category=selected_category) }}">{{ product.business_label }}</a>{% else %}👤 <a href="{{ url_for('home', company_search=product.seller, filter_location=active_filter, category=selected_category) }}">Individual Vendor</a>{% endif %}</div>
+                                <div class="card-brand">{% set seller_logo = (vendor_logos|default({})).get(product.seller) %}{% if seller_logo %}<img class="seller-logo" src="{{ url_for('static', filename='uploads/' + seller_logo) }}" alt="{{ product.business_label }} logo">{% endif %}{% if product.seller in premium_sellers %}🏬 <a href="{{ url_for('home', company_search=product.seller, filter_location=active_filter, category=selected_category) }}">{{ product.business_label }}</a><span class="verified-badge">✓ Verified</span>{% else %}👤 <a href="{{ url_for('home', company_search=product.seller, filter_location=active_filter, category=selected_category) }}">Individual Vendor</a>{% endif %}</div>
                                 <div class="card-metadata">Category: {{ product.category }}</div>
                                 <div class="card-metadata">Seller: @{{ product.seller }}</div>
                                 <div class="card-location">📍 {{ product.location }}</div>
