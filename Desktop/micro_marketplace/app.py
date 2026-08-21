@@ -73,6 +73,28 @@ def init_db():
             created_at TEXT NOT NULL
         )
     """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS orders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_username TEXT NOT NULL,
+            total REAL NOT NULL,
+            status TEXT NOT NULL DEFAULT 'Pending',
+            payment_status TEXT NOT NULL DEFAULT 'Unpaid',
+            created_at TEXT NOT NULL
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS order_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_id INTEGER NOT NULL,
+            product_id INTEGER NOT NULL,
+            seller TEXT NOT NULL,
+            title TEXT NOT NULL,
+            price REAL NOT NULL,
+            quantity INTEGER NOT NULL DEFAULT 1,
+            FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE
+        )
+    """)
     user_columns = {row[1] for row in cursor.execute("PRAGMA table_info(users)")}
     if "whatsapp_number" not in user_columns:
         cursor.execute("ALTER TABLE users ADD COLUMN whatsapp_number TEXT")
@@ -95,6 +117,13 @@ def init_db():
         cursor.execute("ALTER TABLE products ADD COLUMN category TEXT NOT NULL DEFAULT 'Other'")
     if "video_file" not in product_columns:
         cursor.execute("ALTER TABLE products ADD COLUMN video_file TEXT")
+    if "stock_quantity" not in product_columns:
+        cursor.execute("ALTER TABLE products ADD COLUMN stock_quantity INTEGER NOT NULL DEFAULT 1")
+    if "status" not in product_columns:
+        cursor.execute("ALTER TABLE products ADD COLUMN status TEXT NOT NULL DEFAULT 'Available'")
+    order_columns = {row[1] for row in cursor.execute("PRAGMA table_info(orders)")}
+    if "payment_status" not in order_columns:
+        cursor.execute("ALTER TABLE orders ADD COLUMN payment_status TEXT NOT NULL DEFAULT 'Unpaid'")
     trial_start = datetime.now(timezone.utc)
     trial_expiry = trial_start + timedelta(days=61)
     cursor.execute(
@@ -181,6 +210,7 @@ def home():
         title = request.form.get("meal_name" if is_fast_food else "title")
         description = request.form.get("meal_description" if is_fast_food else "description")
         category = "Fast Food" if is_fast_food else request.form.get("category", "Other")
+        stock_quantity = request.form.get("stock_quantity", "1")
         location = request.form.get("location")
         file = request.files.get("product_image")
         video = request.files.get("product_video")
@@ -199,6 +229,13 @@ def home():
         if not is_fast_food and has_image == has_video:
             return redirect(url_for("home", listing_error="Choose exactly one product image or video."))
 
+        try:
+            stock_quantity = int(stock_quantity)
+        except (TypeError, ValueError):
+            return redirect(url_for("home", listing_error="Stock quantity must be a whole number greater than zero."))
+        if stock_quantity < 1:
+            return redirect(url_for("home", listing_error="Stock quantity must be a whole number greater than zero."))
+
         if title and price and description and location:
             if has_image:
                 file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
@@ -207,8 +244,8 @@ def home():
             b_label = session.get("company_name") if vendor_subscription["is_premium"] and session.get("company_name") else "Individual Vendor"
             
             query_db(
-                "INSERT INTO products (title, price, description, image_file, video_file, seller, seller_email, seller_whatsapp, location, business_label, category) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (title, float(price), description, filename, video_filename, session["username"], session["email"], session.get("whatsapp_number"), location, b_label, category)
+                "INSERT INTO products (title, price, description, image_file, video_file, stock_quantity, status, seller, seller_email, seller_whatsapp, location, business_label, category) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (title, float(price), description, filename, video_filename, stock_quantity, "Available", session["username"], session["email"], session.get("whatsapp_number"), location, b_label, category)
             )
             return redirect(url_for("home"))
             
@@ -292,6 +329,12 @@ def delete_item(product_id):
 
 @app.route("/add-to-cart/<int:product_id>")
 def add_to_cart(product_id):
+    product_list = query_db("SELECT stock_quantity, status FROM products WHERE id = ?", (product_id,), one=True)
+    product = product_list[0] if product_list else None
+    if not product:
+        return redirect(url_for("home"))
+    if product["stock_quantity"] < 1 or product["status"] == "Sold":
+        return redirect(url_for("home", listing_error="This product is sold out."))
     if 'cart' not in session:
         session['cart'] = []
     current_cart = session['cart']
@@ -299,6 +342,85 @@ def add_to_cart(product_id):
         current_cart.append(product_id)
         session['cart'] = current_cart
     return redirect(url_for("home"))
+
+@app.route("/mark-sold/<int:product_id>", methods=["POST"])
+def mark_sold(product_id):
+    if session.get("role") != "Vendor":
+        return redirect(url_for("login"))
+    query_db("UPDATE products SET stock_quantity = 0, status = 'Sold' WHERE id = ? AND seller = ?", (product_id, session["username"]))
+    return redirect(url_for("home"))
+
+@app.route("/place-order", methods=["POST"])
+def place_order():
+    if "username" not in session:
+        return redirect(url_for("login"))
+    cart_ids = session.get("cart", [])
+    if not cart_ids:
+        return redirect(url_for("home"))
+    placeholders = ",".join("?" for _ in cart_ids)
+    items = query_db(f"SELECT * FROM products WHERE id IN ({placeholders}) AND stock_quantity > 0 AND status = 'Available'", cart_ids)
+    if len(items) != len(cart_ids):
+        return redirect(url_for("home", listing_error="One or more cart items are no longer available."))
+    total = sum(float(item["price"]) for item in items)
+    created_at = datetime.now(timezone.utc).isoformat()
+    query_db("INSERT INTO orders (customer_username, total, status, payment_status, created_at) VALUES (?, ?, 'Pending', 'Unpaid', ?)", (session["username"], total, created_at))
+    order_id = query_db("SELECT id FROM orders WHERE customer_username = ? AND created_at = ? ORDER BY id DESC LIMIT 1", (session["username"], created_at))[0]["id"]
+    for item in items:
+        query_db("INSERT INTO order_items (order_id, product_id, seller, title, price, quantity) VALUES (?, ?, ?, ?, ?, 1)", (order_id, item["id"], item["seller"], item["title"], item["price"]))
+    session.pop("cart", None)
+    return redirect(url_for("order_history"))
+
+@app.route("/orders/<int:order_id>/payment-sent", methods=["POST"])
+def mark_payment_sent(order_id):
+    if "username" not in session:
+        return redirect(url_for("login"))
+    query_db("UPDATE orders SET payment_status = 'Marked paid' WHERE id = ? AND customer_username = ? AND status = 'Pending'", (order_id, session["username"]))
+    return redirect(url_for("order_history"))
+
+@app.route("/orders")
+def order_history():
+    if "username" not in session:
+        return redirect(url_for("login"))
+    customer_orders = query_db("SELECT * FROM orders WHERE customer_username = ? ORDER BY id DESC", (session["username"],))
+    vendor_orders = query_db("SELECT DISTINCT o.*, oi.seller FROM orders o JOIN order_items oi ON oi.order_id = o.id WHERE oi.seller = ? ORDER BY o.id DESC", (session["username"],)) if session.get("role") == "Vendor" else []
+    order_items = {order["id"]: query_db("SELECT * FROM order_items WHERE order_id = ?", (order["id"],)) for order in customer_orders + vendor_orders}
+    seller_names = {
+        row["username"]: (row["company_name"] or row["username"])
+        for row in query_db("SELECT username, company_name FROM users")
+    }
+    order_sellers = {
+        order["id"]: sorted({seller_names.get(item["seller"], item["seller"]) for item in order_items[order["id"]]})
+        for order in customer_orders
+    }
+    return render_template("orders.html", customer_orders=customer_orders, vendor_orders=vendor_orders, order_items=order_items, order_sellers=order_sellers)
+
+@app.route("/orders/<int:order_id>/confirm", methods=["POST"])
+def confirm_order(order_id):
+    if session.get("role") != "Vendor":
+        return redirect(url_for("login"))
+    order = query_db("SELECT * FROM orders WHERE id = ?", (order_id,))
+    order_items = query_db("SELECT * FROM order_items WHERE order_id = ? AND seller = ?", (order_id, session["username"]))
+    if order and order[0]["payment_status"] == "Marked paid" and order[0]["status"] == "Pending" and order_items:
+        for item in order_items:
+            query_db("UPDATE products SET stock_quantity = MAX(stock_quantity - ?, 0), status = CASE WHEN stock_quantity <= ? THEN 'Sold' ELSE 'Available' END WHERE id = ?", (item["quantity"], item["quantity"], item["product_id"]))
+        query_db("UPDATE orders SET status = 'Confirmed', payment_status = 'Confirmed' WHERE id = ?", (order_id,))
+    return redirect(url_for("order_history"))
+
+@app.route("/orders/<int:order_id>/cancel", methods=["POST"])
+def cancel_order(order_id):
+    if session.get("role") != "Vendor":
+        return redirect(url_for("login"))
+    if query_db("SELECT id FROM order_items WHERE order_id = ? AND seller = ?", (order_id, session["username"])):
+        query_db("UPDATE orders SET status = 'Cancelled' WHERE id = ?", (order_id,))
+    return redirect(url_for("order_history"))
+
+@app.route("/orders/<int:order_id>/reject-payment", methods=["POST"])
+def reject_payment(order_id):
+    if session.get("role") != "Vendor":
+        return redirect(url_for("login"))
+    if query_db("SELECT id FROM order_items WHERE order_id = ? AND seller = ?", (order_id, session["username"])):
+        query_db("UPDATE orders SET payment_status = 'Rejected' WHERE id = ? AND status = 'Pending'", (order_id,))
+    return redirect(url_for("order_history"))
 
 @app.route("/clear-cart")
 def clear_cart():
