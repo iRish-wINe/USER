@@ -15,6 +15,9 @@
         /* Form Animation Classes */
         .vendor-options { display: none; background-color: #f7fafc; padding: 15px; border-radius: 6px; border: 1px dashed #cbd5e0; margin-bottom: 15px; }
         .company-field { display: none; margin-top: 10px; }
+        .catalog-options { display: none; margin-top: 15px; }
+        .category-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; }
+        .category-list label { font-size: 13px; }
     </style>
 </head>
 <body>
@@ -66,6 +69,20 @@
                     <input type="text" name="company_name" placeholder="e.g., Melcom Ghana, Samsung store">
                 </div>
 
+                <div id="catalogBox" class="catalog-options">
+                    <label><b>What range of products do you sell?</b></label>
+                    <select name="catalog_mode" id="catalogMode">
+                        <option value="Focused">Focused on selected categories</option>
+                        <option value="Variety">Variety of products</option>
+                    </select>
+                    <label><b>Tick all product ranges you sell:</b></label>
+                    <div class="category-list">
+                        {% for category in ['Phones & Accessories', 'Groceries', 'Clothing', 'Books', 'Health & Beauty', 'Home & Kitchen', 'Electronics', 'Fast Food', 'Other'] %}
+                            <label><input type="checkbox" name="vendor_categories" value="{{ category }}"> {{ category }}</label>
+                        {% endfor %}
+                    </div>
+                </div>
+
             </div>
             
             <label>Create Password:</label>
@@ -84,8 +101,10 @@
             
             if (roleSelect.value === "Vendor") {
                 vendorBlock.style.display = "block";
+                document.getElementById("catalogBox").style.display = "block";
             } else {
                 vendorBlock.style.display = "none";
+                document.getElementById("catalogBox").style.display = "none";
                 // Reset child field views if they toggle backward
                 document.getElementById("sellerTypeSelect").value = "Individual";
                 document.getElementById("companyBox").style.display = "none";

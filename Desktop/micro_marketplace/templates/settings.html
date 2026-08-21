@@ -16,6 +16,8 @@
         .settings-panel { padding: 28px; }
         label { display: block; font-weight: bold; margin: 15px 0 7px; }
         input { width: 100%; padding: 11px; box-sizing: border-box; background: var(--input-bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; }
+        .category-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0 15px; }
+        .category-list label { margin: 0; font-size: 13px; font-weight: normal; }
         small, .hint { color: var(--muted); }
         .save-btn { width: 100%; margin-top: 22px; padding: 12px; background: #319795; color: white; border: 0; border-radius: 4px; font-weight: bold; cursor: pointer; }
         .message { padding: 12px; border-radius: 4px; margin-bottom: 16px; font-weight: bold; }
@@ -50,6 +52,17 @@
                     <label for="whatsapp_number">Seller WhatsApp number</label>
                     <input id="whatsapp_number" type="text" name="whatsapp_number" value="{{ user.whatsapp_number or '' }}" placeholder="e.g., 0241234567" required>
                     <small>Customers use this number to contact you about payment.</small>
+                    <label for="catalog_mode">Product range</label>
+                    <select id="catalog_mode" name="catalog_mode">
+                        <option value="Focused" {% if user.catalog_mode == 'Focused' %}selected{% endif %}>Focused on selected categories</option>
+                        <option value="Variety" {% if user.catalog_mode == 'Variety' %}selected{% endif %}>Variety of products</option>
+                    </select>
+                    <label>Product categories you sell</label>
+                    <div class="category-list">
+                        {% for category in vendor_category_options %}
+                            <label><input type="checkbox" name="vendor_categories" value="{{ category }}" {% if category in vendor_categories %}checked{% endif %}> {{ category }}</label>
+                        {% endfor %}
+                    </div>
                 {% endif %}
 
                 <label for="new_password">New password <span class="hint">(optional)</span></label>

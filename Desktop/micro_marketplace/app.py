@@ -8,7 +8,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 app.secret_key = "commercial_marketplace_super_secret_token"
-PRODUCT_CATEGORIES = ["Phones & Accessories", "Groceries", "Clothing", "Books", "Beauty & Personal Care", "Home & Kitchen", "Electronics", "Other"]
+PRODUCT_CATEGORIES = ["Phones & Accessories", "Groceries", "Clothing", "Books", "Health & Beauty", "Beauty & Personal Care", "Home & Kitchen", "Electronics", "Fast Food", "Other"]
+VENDOR_CATEGORIES = PRODUCT_CATEGORIES + ["Health & Beauty", "Fast Food"]
 
 UPLOAD_FOLDER = os.path.join("static", "uploads")
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
@@ -29,7 +30,8 @@ def init_db():
             plan TEXT NOT NULL DEFAULT 'basic',
             trial_started_at TEXT,
             subscription_expires_at TEXT,
-            upgrade_requested_at TEXT
+            upgrade_requested_at TEXT,
+            catalog_mode TEXT
         )
     """)
     cursor.execute("""
@@ -47,6 +49,15 @@ def init_db():
             ,category TEXT NOT NULL DEFAULT 'Other'
         )
     """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS vendor_categories (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            category TEXT NOT NULL,
+            UNIQUE(user_id, category),
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
     user_columns = {row[1] for row in cursor.execute("PRAGMA table_info(users)")}
     if "whatsapp_number" not in user_columns:
         cursor.execute("ALTER TABLE users ADD COLUMN whatsapp_number TEXT")
@@ -58,6 +69,8 @@ def init_db():
         cursor.execute("ALTER TABLE users ADD COLUMN subscription_expires_at TEXT")
     if "upgrade_requested_at" not in user_columns:
         cursor.execute("ALTER TABLE users ADD COLUMN upgrade_requested_at TEXT")
+    if "catalog_mode" not in user_columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN catalog_mode TEXT")
     product_columns = {row[1] for row in cursor.execute("PRAGMA table_info(products)")}
     if "seller_whatsapp" not in product_columns:
         cursor.execute("ALTER TABLE products ADD COLUMN seller_whatsapp TEXT")
@@ -106,6 +119,9 @@ def query_db(query, args=(), one=False):
     conn.commit()
     conn.close()
     return (rv if rv else None) if one else rv
+
+def get_vendor_categories(user_id):
+    return [row["category"] for row in query_db("SELECT category FROM vendor_categories WHERE user_id = ? ORDER BY category", (user_id,))]
 
 @app.route("/", methods=["GET", "POST"])
 def home():
@@ -287,6 +303,7 @@ def settings():
         session.clear()
         return redirect(url_for("login"))
     user = user_list[0]
+    vendor_categories = get_vendor_categories(user["id"]) if user["role"] == "Vendor" else []
 
     if request.method == "POST":
         email = request.form.get("email", "").strip()
@@ -294,6 +311,8 @@ def settings():
         company_name = request.form.get("company_name", "").strip() or None
         new_password = request.form.get("new_password", "")
         confirm_password = request.form.get("confirm_password", "")
+        catalog_mode = request.form.get("catalog_mode", "Focused")
+        selected_categories = [category for category in request.form.getlist("vendor_categories") if category in VENDOR_CATEGORIES]
 
         if not email:
             return render_template("settings.html", user=user, settings_error="Email is required.")
@@ -306,16 +325,23 @@ def settings():
         if user["role"] != "Vendor":
             company_name = None
             whatsapp_number = None
+            catalog_mode = None
+            selected_categories = []
+        elif catalog_mode not in ("Variety", "Focused") or not selected_categories:
+            return render_template("settings.html", user=user, vendor_categories=vendor_categories, vendor_category_options=VENDOR_CATEGORIES, settings_error="Choose whether you sell a variety or focus on a category, then select at least one product range.")
         query_db(
-            "UPDATE users SET email = ?, password_hash = ?, company_name = ?, whatsapp_number = ? WHERE username = ?",
-            (email, password_hash, company_name, whatsapp_number, session["username"])
+            "UPDATE users SET email = ?, password_hash = ?, company_name = ?, whatsapp_number = ?, catalog_mode = ? WHERE username = ?",
+            (email, password_hash, company_name, whatsapp_number, catalog_mode, session["username"])
         )
+        query_db("DELETE FROM vendor_categories WHERE user_id = ?", (user["id"],))
+        for category in selected_categories:
+            query_db("INSERT INTO vendor_categories (user_id, category) VALUES (?, ?)", (user["id"], category))
         session["email"] = email
         session["company_name"] = company_name
         session["whatsapp_number"] = whatsapp_number
         return redirect(url_for("settings", updated="1"))
 
-    return render_template("settings.html", user=user, subscription=subscription_status(user), updated=request.args.get("updated") == "1")
+    return render_template("settings.html", user=user, subscription=subscription_status(user), vendor_categories=vendor_categories, vendor_category_options=VENDOR_CATEGORIES, updated=request.args.get("updated") == "1")
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -344,21 +370,30 @@ def register():
         password = request.form.get("reg_pass")
         role = request.form.get("role")
         seller_type = request.form.get("seller_type")
+        catalog_mode = request.form.get("catalog_mode")
+        selected_categories = [category for category in request.form.getlist("vendor_categories") if category in VENDOR_CATEGORIES]
         company_name = request.form.get("company_name")
         whatsapp_number = normalize_whatsapp_number(request.form.get("whatsapp_number"))
         if role == "Customer":
             seller_type = "Individual"
             company_name = None
             whatsapp_number = None
+            catalog_mode = None
+            selected_categories = []
         elif role == "Vendor" and seller_type == "Individual":
             company_name = None
         if role == "Vendor" and not whatsapp_number:
             return render_template("login.html", reg_error="Vendor accounts need a WhatsApp number to receive payments.")
+        if role == "Vendor" and (catalog_mode not in ("Variety", "Focused") or not selected_categories):
+            return render_template("login.html", reg_error="Choose a product range and select at least one category.")
         try:
             hashed_pwd = generate_password_hash(password)
             trial_started_at = datetime.now(timezone.utc)
             trial_expires_at = trial_started_at + timedelta(days=61)
-            query_db("INSERT INTO users (username, email, password_hash, role, seller_type, company_name, whatsapp_number, plan, trial_started_at, subscription_expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (username, email, hashed_pwd, role, seller_type, company_name, whatsapp_number, "basic", trial_started_at.isoformat() if role == "Vendor" else None, trial_expires_at.isoformat() if role == "Vendor" else None))
+            query_db("INSERT INTO users (username, email, password_hash, role, seller_type, company_name, whatsapp_number, plan, trial_started_at, subscription_expires_at, catalog_mode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (username, email, hashed_pwd, role, seller_type, company_name, whatsapp_number, "basic", trial_started_at.isoformat() if role == "Vendor" else None, trial_expires_at.isoformat() if role == "Vendor" else None, catalog_mode))
+            new_user = query_db("SELECT id FROM users WHERE username = ?", (username,))[0]
+            for category in selected_categories:
+                query_db("INSERT INTO vendor_categories (user_id, category) VALUES (?, ?)", (new_user["id"], category))
             session["username"] = username
             session["email"] = email
             session["role"] = role
