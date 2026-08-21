@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>Biz Hub Admin Dashboard</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='biz-hub-logo.svg') }}">
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f7fafc; color: #2d3748; margin: 0; padding: 30px; }
         .container { max-width: 1100px; margin: 0 auto; }
@@ -20,7 +21,7 @@
 </head>
 <body>
     <div class="container">
-        <header><h1>Biz Hub Admin Dashboard</h1><a class="logout" href="{{ url_for('admin_logout') }}">Admin Logout</a></header>
+        <header><img src="{{ url_for('static', filename='biz-hub-logo.svg') }}" alt="Biz Hub - Your Local Market, Unified Online" style="width: 340px;"><a class="logout" href="{{ url_for('admin_logout') }}">Admin Logout</a></header>
         <p class="muted">Review payment in WhatsApp, then approve Premium for 30 days.</p>
         <div class="table-wrap">
             <table>

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="220" viewBox="0 0 920 220" role="img" aria-labelledby="title desc">
+  <title id="title">Biz Hub</title>
+  <desc id="desc">Biz Hub logo with the motto Your Local Market, Unified Online</desc>
+  <rect width="920" height="220" rx="28" fill="#123047"/>
+  <circle cx="112" cy="110" r="68" fill="#f59e0b"/>
+  <path d="M72 104h80v58H72z" fill="#fff7ed"/>
+  <path d="M62 104l50-45 50 45" fill="none" stroke="#fff7ed" stroke-width="14" stroke-linejoin="round"/>
+  <path d="M102 162v-34h20v34" fill="#123047"/>
+  <circle cx="156" cy="71" r="16" fill="#25d366"/>
+  <path d="M149 71l5 5 9-11" fill="none" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="215" y="103" font-family="Segoe UI, Arial, sans-serif" font-size="66" font-weight="700" fill="white">Biz Hub</text>
+  <text x="220" y="148" font-family="Segoe UI, Arial, sans-serif" font-size="25" letter-spacing="1" fill="#fbd38d">Your Local Market, Unified Online</text>
+</svg>

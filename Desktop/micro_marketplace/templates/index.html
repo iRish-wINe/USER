@@ -2,11 +2,13 @@
 <html>
 <head>
     <title>Biz Hub</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='biz-hub-logo.svg') }}">
     <style>
         :root { color-scheme: light; --page-bg: #f7fafc; --surface: #ffffff; --text: #2d3748; --muted: #718096; --border: #e2e8f0; --input-bg: #ffffff; --soft-bg: #ebf8ff; }
         :root[data-theme="dark"] { color-scheme: dark; --page-bg: #17202b; --surface: #243140; --text: #f7fafc; --muted: #c0cad6; --border: #405163; --input-bg: #1d2935; --soft-bg: #20384b; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; background-color: var(--page-bg); color: var(--text); margin: 0; }
         .container { max-width: 1100px; margin: 0 auto; }
+        .brand-logo { width: 250px; height: auto; display: block; }
         .navbar { display: flex; justify-content: space-between; align-items: center; background-color: var(--surface); padding: 15px 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.12); margin-bottom: 20px; }
         .nav-links a { margin-left: 15px; text-decoration: none; color: #2b6cb0; font-weight: bold; }
         .nav-links a.logout { color: #e53e3e; }
@@ -55,7 +57,7 @@
 <body>
     <div class="container">
         <div class="navbar">
-            <h2 style="margin:0;">🏪 Biz Hub</h2>
+            <a href="{{ url_for('home') }}"><img class="brand-logo" src="{{ url_for('static', filename='biz-hub-logo.svg') }}" alt="Biz Hub - Your Local Market, Unified Online"></a>
             <div class="nav-links">
                 {% if session.get('username') %}
                     <span>Welcome, <b>{{ session['username'] }}</b>!</span>

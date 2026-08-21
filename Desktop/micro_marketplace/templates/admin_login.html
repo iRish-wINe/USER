@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>Biz Hub Admin Login</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='biz-hub-logo.svg') }}">
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #17202b; color: #f7fafc; display: grid; place-items: center; min-height: 100vh; margin: 0; }
         form { width: min(360px, calc(100% - 30px)); padding: 28px; background: #243140; border: 1px solid #405163; border-radius: 8px; box-sizing: border-box; }
@@ -15,6 +16,7 @@
 </head>
 <body>
     <form method="POST" action="{{ url_for('admin_login') }}">
+        <img src="{{ url_for('static', filename='biz-hub-logo.svg') }}" alt="Biz Hub - Your Local Market, Unified Online" style="width: 115%; max-width: 420px; margin: 0 -7.5% 18px;">
         <h1>Biz Hub Admin</h1>
         {% if admin_error %}<div class="error">{{ admin_error }}</div>{% endif %}
         {% if not admin_configured %}<p class="hint">Set BIZ_HUB_ADMIN_USERNAME and BIZ_HUB_ADMIN_PASSWORD before signing in.</p>{% endif %}
