@@ -95,6 +95,16 @@ def init_db():
             FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE
         )
     """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS password_resets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            token TEXT UNIQUE NOT NULL,
+            expires_at TEXT NOT NULL,
+            used INTEGER NOT NULL DEFAULT 0,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
     user_columns = {row[1] for row in cursor.execute("PRAGMA table_info(users)")}
     if "whatsapp_number" not in user_columns:
         cursor.execute("ALTER TABLE users ADD COLUMN whatsapp_number TEXT")
@@ -183,6 +193,17 @@ def query_db(query, args=(), one=False):
 
 def get_vendor_categories(user_id):
     return [row["category"] for row in query_db("SELECT category FROM vendor_categories WHERE user_id = ? ORDER BY category", (user_id,))]
+
+def valid_reset_token(token):
+    if not token:
+        return None
+    reset_rows = query_db("SELECT * FROM password_resets WHERE token = ? AND used = 0", (token,))
+    if not reset_rows:
+        return None
+    reset = reset_rows[0]
+    if datetime.fromisoformat(reset["expires_at"]) <= datetime.now(timezone.utc):
+        return None
+    return reset
 
 def save_company_logo(upload):
     if not upload or not upload.filename:
@@ -301,7 +322,7 @@ def home():
         message = f"Hello {seller_order['seller']}, I want to buy these products on Biz Hub:\n"
         for item in seller_order["items"]:
             message += f"- {item['title']} (GH₵{item['price']}) in {item['location']}\n"
-        message += f"\nTotal Cost: GH₵{seller_order['total']:.2f}. Let's arrange MoMo payment!"
+        message += f"\nTotal Cost: GH₵{seller_order['total']:.2f}. Let's arrange MoMo payment and delivery!"
         seller_order["whatsapp_text"] = quote(message)
 
     premium_sellers = {row["username"] for row in query_db("SELECT username FROM users WHERE role = 'Vendor' AND plan = 'premium' AND subscription_expires_at > ?", (datetime.now(timezone.utc).isoformat(),))}
@@ -347,7 +368,15 @@ def add_to_cart(product_id):
 def mark_sold(product_id):
     if session.get("role") != "Vendor":
         return redirect(url_for("login"))
-    query_db("UPDATE products SET stock_quantity = 0, status = 'Sold' WHERE id = ? AND seller = ?", (product_id, session["username"]))
+    product_list = query_db("SELECT stock_quantity FROM products WHERE id = ? AND seller = ?", (product_id, session["username"]), one=True)
+    product = product_list[0] if product_list else None
+    if product:
+        try:
+            sold_quantity = int(request.form.get("sold_quantity", "1"))
+        except (TypeError, ValueError):
+            sold_quantity = 0
+        if 1 <= sold_quantity <= product["stock_quantity"]:
+            query_db("UPDATE products SET stock_quantity = MAX(stock_quantity - ?, 0), status = CASE WHEN stock_quantity <= ? THEN 'Sold' ELSE 'Available' END WHERE id = ? AND seller = ?", (sold_quantity, sold_quantity, product_id, session["username"]))
     return redirect(url_for("home"))
 
 @app.route("/place-order", methods=["POST"])
@@ -486,9 +515,9 @@ def admin_signup():
 def admin_dashboard():
     if not is_admin():
         return redirect(url_for("admin_login"))
-    vendors = query_db("SELECT * FROM users WHERE role = 'Vendor' ORDER BY COALESCE(upgrade_requested_at, '') DESC, username")
+    users = query_db("SELECT * FROM users ORDER BY role, username")
     listing_counts = {row["seller"]: row["count"] for row in query_db("SELECT seller, COUNT(*) AS count FROM products GROUP BY seller")}
-    return render_template("admin.html", vendors=vendors, subscription_status=subscription_status, listing_counts=listing_counts)
+    return render_template("admin.html", users=users, subscription_status=subscription_status, listing_counts=listing_counts)
 
 @app.route("/admin/approve-premium/<int:user_id>", methods=["POST"])
 def approve_premium(user_id):
@@ -496,6 +525,33 @@ def approve_premium(user_id):
         return redirect(url_for("admin_login"))
     expiry = datetime.now(timezone.utc) + timedelta(days=30)
     query_db("UPDATE users SET plan = 'premium', subscription_expires_at = ?, upgrade_requested_at = NULL WHERE id = ? AND role = 'Vendor'", (expiry.isoformat(), user_id))
+    return redirect(url_for("admin_dashboard"))
+
+@app.route("/admin/delete-user/<int:user_id>", methods=["POST"])
+def admin_delete_user(user_id):
+    if not is_admin():
+        return redirect(url_for("admin_login"))
+    user_list = query_db("SELECT * FROM users WHERE id = ?", (user_id,))
+    if not user_list:
+        return redirect(url_for("admin_dashboard"))
+    user = user_list[0]
+    product_rows = query_db("SELECT image_file, video_file FROM products WHERE seller = ?", (user["username"],))
+    for product in product_rows:
+        for filename in (product["image_file"], product["video_file"], user["company_logo"]):
+            if filename:
+                file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+                if os.path.isfile(file_path):
+                    os.remove(file_path)
+    order_ids = {row["order_id"] for row in query_db("SELECT order_id FROM order_items WHERE seller = ?", (user["username"],))}
+    order_ids.update(row["id"] for row in query_db("SELECT id FROM orders WHERE customer_username = ?", (user["username"],)))
+    query_db("DELETE FROM order_items WHERE seller = ?", (user["username"],))
+    for order_id in order_ids:
+        if not query_db("SELECT id FROM order_items WHERE order_id = ?", (order_id,)):
+            query_db("DELETE FROM orders WHERE id = ?", (order_id,))
+    query_db("DELETE FROM products WHERE seller = ?", (user["username"],))
+    query_db("DELETE FROM vendor_categories WHERE user_id = ?", (user["id"],))
+    query_db("DELETE FROM password_resets WHERE user_id = ?", (user["id"],))
+    query_db("DELETE FROM users WHERE id = ?", (user_id,))
     return redirect(url_for("admin_dashboard"))
 
 @app.route("/admin/logout")
@@ -578,6 +634,47 @@ def login():
                 return redirect(url_for("home"))
         return render_template("login.html", login_error="Invalid username or password.")
     return render_template("login.html")
+
+@app.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    reset_error = None
+    reset_link = None
+    if request.method == "POST":
+        whatsapp_number = normalize_whatsapp_number(request.form.get("whatsapp_number"))
+        users = query_db("SELECT * FROM users WHERE whatsapp_number = ?", (whatsapp_number,))
+        if not users:
+            reset_error = "No account was found with that registered WhatsApp number."
+        else:
+            token = uuid.uuid4().hex
+            expires_at = (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat()
+            query_db("INSERT INTO password_resets (user_id, token, expires_at) VALUES (?, ?, ?)", (users[0]["id"], token, expires_at))
+            reset_link = url_for("reset_credentials", token=token, _external=True)
+            payment_number = normalize_whatsapp_number(os.environ.get("BIZ_HUB_PAYMENT_WHATSAPP", "233558272972"))
+            reset_text = quote(f"Hello Biz Hub, I need to recover my account registered with WhatsApp {whatsapp_number}. My reset link is: {reset_link}")
+            reset_link = f"https://wa.me/{payment_number}?text={reset_text}"
+    return render_template("forgot_password.html", reset_error=reset_error, reset_link=reset_link)
+
+@app.route("/reset-credentials/<token>", methods=["GET", "POST"])
+def reset_credentials(token):
+    reset = valid_reset_token(token)
+    if not reset:
+        return render_template("reset_credentials.html", reset_error="This recovery link is invalid or has expired.", token=None)
+    user = query_db("SELECT * FROM users WHERE id = ?", (reset["user_id"],))[0]
+    if request.method == "POST":
+        new_username = request.form.get("username", "").strip()
+        new_password = request.form.get("password", "")
+        confirm_password = request.form.get("confirm_password", "")
+        if not new_username or not new_password:
+            return render_template("reset_credentials.html", reset_error="Username and password are required.", token=token, user=user)
+        if new_password != confirm_password:
+            return render_template("reset_credentials.html", reset_error="The passwords do not match.", token=token, user=user)
+        try:
+            query_db("UPDATE users SET username = ?, password_hash = ? WHERE id = ?", (new_username, generate_password_hash(new_password), user["id"]))
+            query_db("UPDATE password_resets SET used = 1 WHERE id = ?", (reset["id"],))
+        except sqlite3.IntegrityError:
+            return render_template("reset_credentials.html", reset_error="That username is already taken.", token=token, user=user)
+        return redirect(url_for("login", recovered="1"))
+    return render_template("reset_credentials.html", token=token, user=user)
 
 @app.route("/register", methods=["GET", "POST"])
 def register():

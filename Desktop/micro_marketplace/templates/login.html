@@ -21,11 +21,13 @@
         .catalog-options { display: none; margin-top: 15px; }
         .category-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; }
         .category-list label { font-size: 13px; }
+        .page-logo { grid-column: 1 / -1; display: block; width: min(100%, 460px); height: auto; margin: 0 auto; }
+        .forgot-link { display: block; margin-top: 14px; text-align: center; color: #2b6cb0; font-weight: bold; text-decoration: none; }
     </style>
 </head>
 <body>
     <div class="auth-container">
-        <img src="{{ url_for('static', filename='biz-hub-logo.svg') }}" alt="Biz Hub - Your Local Market, Unified Online" style="grid-column: 1 / -1; width: min(100%, 560px); margin: 0 auto;">
+        <img class="page-logo" src="{{ url_for('static', filename='biz-hub-logo.svg') }}" alt="Biz Hub - Your Local Market, Unified Online">
         
         <!-- BLUE PORTAL: MEMBER SIGN IN -->
         <form method="POST" action="/login">
@@ -36,6 +38,7 @@
             <label>Password:</label>
             <input type="password" name="login_pass" required>
             <button type="submit" class="login-btn">Sign In</button>
+            <a class="forgot-link" href="{{ url_for('forgot_password') }}">Forgot username or password?</a>
         </form>
 
         <!-- GREEN PORTAL: DYNAMIC ROLE REGISTRATION CREATION MATRIX -->
