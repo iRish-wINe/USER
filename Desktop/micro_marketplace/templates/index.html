@@ -138,15 +138,16 @@
                                 {% for category in categories %}<option value="{{ category }}">{{ category }}</option>{% endfor %}
                             </select>
                             <textarea name="description" placeholder="Description" required></textarea>
-                            <input type="file" name="product_image" accept="image/*" required>
+                            <label for="product-image">Product image or video</label>
+                            <input id="product-image" type="file" name="product_image" accept="image/*">
                         {% endif %}
                         <select name="location">
                             {% for city in ['Accra', 'Akim Oda', 'Cape Coast', 'Koforidua', 'Kumasi', 'Nsawam', 'Takoradi', 'Tamale', 'Tema'] %}<option value="{{ city }}">{{ city }}</option>{% endfor %}
                         </select>
                         {% if vendor_subscription.is_premium %}
-                            <label for="product-video">Verified vendor video (max 20 seconds)</label>
+                            <label for="product-video">Or use a verified vendor video (max 20 seconds)</label>
                             <input id="product-video" type="file" name="product_video" accept="video/mp4,video/webm,video/quicktime">
-                            <small id="video-help">Optional product video. MP4, WebM, or MOV.</small>
+                            <small id="video-help">Choose an image or a video, not both.</small>
                         {% endif %}
                         <button type="submit" class="submit-btn">Publish</button>
                     </form>
@@ -162,7 +163,7 @@
                 <div class="grid">
                     {% for product in products %}
                         <div class="card">
-                            <img class="card-img" src="{{ url_for('static', filename='uploads/' + product.image_file) }}" alt="{{ product.title }}">
+                            {% if product.image_file %}<img class="card-img" src="{{ url_for('static', filename='uploads/' + product.image_file) }}" alt="{{ product.title }}">{% endif %}
                             {% if product.video_file %}<video class="card-video" controls preload="metadata" playsinline><source src="{{ url_for('static', filename='uploads/' + product.video_file) }}">Your browser does not support video playback.</video>{% endif %}
                             <div class="card-body">
                                 <h3 class="card-title">{{ product.title }}</h3>
@@ -240,9 +241,20 @@
         const productVideo = document.getElementById('product-video');
         const videoHelp = document.getElementById('video-help');
         if (productVideo) {
+            const productImage = document.getElementById('product-image');
+            if (productImage) productImage.addEventListener('change', () => {
+                if (productImage.files.length && productVideo) {
+                    productVideo.value = '';
+                    videoHelp.textContent = 'Image selected. Choose only one media type.';
+                    videoHelp.style.color = '#2f855a';
+                }
+            });
             productVideo.addEventListener('change', () => {
                 const selectedVideo = productVideo.files[0];
                 if (!selectedVideo) return;
+                if (productImage.files.length) {
+                    productImage.value = '';
+                }
                 const probe = document.createElement('video');
                 probe.preload = 'metadata';
                 probe.onloadedmetadata = () => {

@@ -15,9 +15,10 @@ PRODUCT_CATEGORIES = ["Phones & Accessories", "Groceries", "Clothing", "Books", 
 VENDOR_CATEGORIES = PRODUCT_CATEGORIES + ["Health & Beauty", "Fast Food"]
 VIDEO_EXTENSIONS = {".mp4", ".webm", ".mov"}
 
-UPLOAD_FOLDER = os.path.join("static", "uploads")
+UPLOAD_FOLDER = os.path.join(app.root_path, "static", "uploads")
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 def init_db():
     conn = sqlite3.connect("marketplace.db", timeout=20)
@@ -193,8 +194,13 @@ def home():
             video_filename = f"video-{uuid.uuid4().hex}{video_extension}"
         filename = "fast-food-placeholder.svg" if is_fast_food else secure_filename(file.filename) if file and file.filename else ""
         
-        if title and price and description and location and (is_fast_food or file and file.filename):
-            if not is_fast_food:
+        has_image = bool(file and file.filename)
+        has_video = bool(video and video.filename)
+        if not is_fast_food and has_image == has_video:
+            return redirect(url_for("home", listing_error="Choose exactly one product image or video."))
+
+        if title and price and description and location:
+            if has_image:
                 file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
             if video_filename:
                 video.save(os.path.join(app.config["UPLOAD_FOLDER"], video_filename))
@@ -278,7 +284,8 @@ def home():
 def delete_item(product_id):
     if "username" not in session:
         return redirect(url_for("login"))
-    product = query_db("SELECT * FROM products WHERE id = ?", (product_id,), one=True)
+    product_list = query_db("SELECT * FROM products WHERE id = ?", (product_id,), one=True)
+    product = product_list[0] if product_list else None
     if product and product["seller"] == session["username"]:
         query_db("DELETE FROM products WHERE id = ?", (product_id,))
     return redirect(url_for("home"))
