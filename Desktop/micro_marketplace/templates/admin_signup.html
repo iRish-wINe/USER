@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Biz Hub Admin Login</title>
+    <title>Biz Hub Admin Sign Up</title>
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='biz-hub-logo.svg') }}">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     <meta name="theme-color" content="#123047">
@@ -14,21 +14,22 @@
         button { width: 100%; margin-top: 20px; padding: 11px; border: 0; border-radius: 4px; background: #319795; color: white; font-weight: bold; cursor: pointer; }
         .error { color: #feb2b2; font-weight: bold; margin-bottom: 12px; }
         .hint { color: #c0cad6; font-size: 13px; }
+        a { color: #90cdf4; }
     </style>
 </head>
 <body>
-    <form method="POST" action="{{ url_for('admin_login') }}">
-        <img src="{{ url_for('static', filename='biz-hub-logo.svg') }}" alt="Biz Hub - Your Local Market, Unified Online" style="width: 115%; max-width: 420px; margin: 0 -7.5% 18px;">
-        <h1>Biz Hub Admin</h1>
+    <form method="POST" action="{{ url_for('admin_signup') }}">
+        <img src="{{ url_for('static', filename='biz-hub-logo.svg') }}" alt="Biz Hub - Your Local Market, Unified Online" style="width: 100%; margin-bottom: 18px;">
+        <h1>Create Admin Account</h1>
+        <p class="hint">This setup link works only once. Keep the credentials private.</p>
         {% if admin_error %}<div class="error">{{ admin_error }}</div>{% endif %}
-        {% if request.args.get('registered') %}<p class="hint">Admin account created. Sign in below.</p>{% endif %}
-        {% if not admin_configured %}<p class="hint">Set BIZ_HUB_ADMIN_USERNAME and BIZ_HUB_ADMIN_PASSWORD before signing in.</p>{% endif %}
         <label for="username">Admin username</label>
         <input id="username" name="username" required>
         <label for="password">Admin password</label>
         <input id="password" name="password" type="password" required>
-        <button type="submit">Sign In</button>
-        {% if signup_available %}<p class="hint"><a href="{{ url_for('admin_signup') }}">Create the first admin account</a></p>{% endif %}
+        <label for="confirm_password">Confirm password</label>
+        <input id="confirm_password" name="confirm_password" type="password" required>
+        <button type="submit">Create Admin Account</button>
     </form>
 </body>
 </html>
