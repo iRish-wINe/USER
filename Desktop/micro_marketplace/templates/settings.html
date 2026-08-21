@@ -45,13 +45,17 @@
             <p class="account-note">Username: <strong>{{ user.username }}</strong> · Account type: <strong>{{ user.role }}</strong></p>
             {% if updated %}<div class="message success">Your account details were updated.</div>{% endif %}
             {% if settings_error %}<div class="message error">{{ settings_error }}</div>{% endif %}
-            <form method="POST" action="{{ url_for('settings') }}">
+            <form method="POST" action="{{ url_for('settings') }}" enctype="multipart/form-data">
                 <label for="email">Email address</label>
                 <input id="email" type="email" name="email" value="{{ user.email }}" required>
 
                 {% if user.role == 'Vendor' %}
                     <label for="company_name">Company or business name</label>
                     <input id="company_name" type="text" name="company_name" value="{{ user.company_name or '' }}">
+                    <label for="company_logo">Company logo</label>
+                    {% if user.company_logo %}<img src="{{ url_for('static', filename='uploads/' + user.company_logo) }}" alt="Current company logo" style="max-width: 140px; max-height: 80px; object-fit: contain; margin-bottom: 10px;">{% endif %}
+                    <input id="company_logo" type="file" name="company_logo" accept="image/png,image/jpeg,image/webp,image/gif">
+                    <small>Upload PNG, JPG, JPEG, WEBP, or GIF.</small>
                     <label for="whatsapp_number">Seller WhatsApp number</label>
                     <input id="whatsapp_number" type="text" name="whatsapp_number" value="{{ user.whatsapp_number or '' }}" placeholder="e.g., 0241234567" required>
                     <small>Customers use this number to contact you about payment.</small>

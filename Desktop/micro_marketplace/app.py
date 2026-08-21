@@ -1,5 +1,6 @@
 import sqlite3
 import os
+import uuid
 from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
 from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory
@@ -8,6 +9,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 app.secret_key = "commercial_marketplace_super_secret_token"
+LOCAL_ADMIN_USERNAME = "Stapps Of Faith"
+LOCAL_ADMIN_PASSWORD = "RICHARD10"
 PRODUCT_CATEGORIES = ["Phones & Accessories", "Groceries", "Clothing", "Books", "Health & Beauty", "Beauty & Personal Care", "Home & Kitchen", "Electronics", "Fast Food", "Other"]
 VENDOR_CATEGORIES = PRODUCT_CATEGORIES + ["Health & Beauty", "Fast Food"]
 
@@ -31,7 +34,8 @@ def init_db():
             trial_started_at TEXT,
             subscription_expires_at TEXT,
             upgrade_requested_at TEXT,
-            catalog_mode TEXT
+            catalog_mode TEXT,
+            company_logo TEXT
         )
     """)
     cursor.execute("""
@@ -58,6 +62,14 @@ def init_db():
             FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         )
     """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS admin_users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+    """)
     user_columns = {row[1] for row in cursor.execute("PRAGMA table_info(users)")}
     if "whatsapp_number" not in user_columns:
         cursor.execute("ALTER TABLE users ADD COLUMN whatsapp_number TEXT")
@@ -71,6 +83,8 @@ def init_db():
         cursor.execute("ALTER TABLE users ADD COLUMN upgrade_requested_at TEXT")
     if "catalog_mode" not in user_columns:
         cursor.execute("ALTER TABLE users ADD COLUMN catalog_mode TEXT")
+    if "company_logo" not in user_columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN company_logo TEXT")
     product_columns = {row[1] for row in cursor.execute("PRAGMA table_info(products)")}
     if "seller_whatsapp" not in product_columns:
         cursor.execute("ALTER TABLE products ADD COLUMN seller_whatsapp TEXT")
@@ -105,7 +119,16 @@ def subscription_status(user):
     return {"name": "Basic", "is_premium": False, "trial": False, "expires": None}
 
 def admin_configured():
-    return bool(os.environ.get("BIZ_HUB_ADMIN_USERNAME") and os.environ.get("BIZ_HUB_ADMIN_PASSWORD"))
+    return bool(get_admin_username() and get_admin_password()) or bool(query_db("SELECT id FROM admin_users LIMIT 1"))
+
+def get_admin_username():
+    return os.environ.get("BIZ_HUB_ADMIN_USERNAME") or LOCAL_ADMIN_USERNAME
+
+def get_admin_password():
+    return os.environ.get("BIZ_HUB_ADMIN_PASSWORD") or LOCAL_ADMIN_PASSWORD
+
+def admin_signup_available():
+    return not bool(query_db("SELECT id FROM admin_users LIMIT 1"))
 
 def is_admin():
     return session.get("is_admin") is True
@@ -126,6 +149,16 @@ def query_db(query, args=(), one=False):
 
 def get_vendor_categories(user_id):
     return [row["category"] for row in query_db("SELECT category FROM vendor_categories WHERE user_id = ? ORDER BY category", (user_id,))]
+
+def save_company_logo(upload):
+    if not upload or not upload.filename:
+        return None
+    extension = os.path.splitext(upload.filename)[1].lower()
+    if extension not in {".png", ".jpg", ".jpeg", ".webp", ".gif"}:
+        return None
+    filename = f"company-{uuid.uuid4().hex}{extension}"
+    upload.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+    return filename
 
 @app.route("/", methods=["GET", "POST"])
 def home():
@@ -179,6 +212,10 @@ def home():
         product_query += " WHERE " + " AND ".join(product_conditions)
     product_query += " ORDER BY id DESC"
     all_products = query_db(product_query, product_args)
+    vendor_logos = {
+        row["username"]: row["company_logo"]
+        for row in query_db("SELECT username, company_logo FROM users WHERE company_logo IS NOT NULL")
+    }
         
     cart_items = []
     cart_total = 0.0
@@ -220,7 +257,7 @@ def home():
         vendor = query_db("SELECT * FROM users WHERE username = ?", (session["username"],))[0]
         vendor_subscription = subscription_status(vendor)
         listing_count = query_db("SELECT COUNT(*) AS count FROM products WHERE seller = ?", (session["username"],))[0]["count"]
-    return render_template("index.html", products=all_products, active_filter=selected_filter, company_search=company_search, selected_category=selected_category, categories=PRODUCT_CATEGORIES, cart_items=cart_items, cart_total=cart_total, seller_orders=sorted(seller_orders.values(), key=lambda order: not order["priority"]), vendor_subscription=vendor_subscription, listing_count=listing_count, listing_error=listing_error, premium_sellers=premium_sellers)
+    return render_template("index.html", products=all_products, active_filter=selected_filter, company_search=company_search, selected_category=selected_category, categories=PRODUCT_CATEGORIES, vendor_logos=vendor_logos, cart_items=cart_items, cart_total=cart_total, seller_orders=sorted(seller_orders.values(), key=lambda order: not order["priority"]), vendor_subscription=vendor_subscription, listing_count=listing_count, listing_error=listing_error, premium_sellers=premium_sellers)
 
 @app.route("/delete-item/<int:product_id>")
 def delete_item(product_id):
@@ -270,11 +307,36 @@ def admin_login():
     if request.method == "POST":
         if not admin_configured():
             return render_template("admin_login.html", admin_error="Admin credentials are not configured.")
-        if request.form.get("username") == os.environ.get("BIZ_HUB_ADMIN_USERNAME") and request.form.get("password") == os.environ.get("BIZ_HUB_ADMIN_PASSWORD"):
+        submitted_username = request.form.get("username", "").strip()
+        submitted_password = request.form.get("password", "")
+        database_admin = query_db("SELECT * FROM admin_users WHERE username = ?", (submitted_username,))
+        database_login = database_admin and check_password_hash(database_admin[0]["password_hash"], submitted_password)
+        configured_login = submitted_username == os.environ.get("BIZ_HUB_ADMIN_USERNAME", "").strip() and submitted_password == os.environ.get("BIZ_HUB_ADMIN_PASSWORD", "")
+        local_login = submitted_username == LOCAL_ADMIN_USERNAME and submitted_password == LOCAL_ADMIN_PASSWORD
+        if database_login or configured_login or local_login:
             session["is_admin"] = True
             return redirect(url_for("admin_dashboard"))
         return render_template("admin_login.html", admin_error="Invalid admin credentials.")
-    return render_template("admin_login.html", admin_configured=admin_configured())
+    return render_template("admin_login.html", admin_configured=admin_configured(), signup_available=admin_signup_available())
+
+@app.route("/admin/signup", methods=["GET", "POST"])
+def admin_signup():
+    if not admin_signup_available():
+        return redirect(url_for("admin_login"))
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+        confirm_password = request.form.get("confirm_password", "")
+        if not username or not password:
+            return render_template("admin_signup.html", admin_error="Username and password are required.")
+        if password != confirm_password:
+            return render_template("admin_signup.html", admin_error="The passwords do not match.")
+        try:
+            query_db("INSERT INTO admin_users (username, password_hash, created_at) VALUES (?, ?, ?)", (username, generate_password_hash(password), datetime.now(timezone.utc).isoformat()))
+        except sqlite3.IntegrityError:
+            return render_template("admin_signup.html", admin_error="That admin username is already taken.")
+        return redirect(url_for("admin_login", registered="1"))
+    return render_template("admin_signup.html")
 
 @app.route("/admin")
 def admin_dashboard():
@@ -315,6 +377,8 @@ def settings():
         company_name = request.form.get("company_name", "").strip() or None
         new_password = request.form.get("new_password", "")
         confirm_password = request.form.get("confirm_password", "")
+        company_logo = user["company_logo"]
+        logo_upload = request.files.get("company_logo")
         catalog_mode = request.form.get("catalog_mode", "Focused")
         selected_categories = [category for category in request.form.getlist("vendor_categories") if category in VENDOR_CATEGORIES]
 
@@ -324,6 +388,10 @@ def settings():
             return render_template("settings.html", user=user, settings_error="Vendor accounts need a WhatsApp number for payments.")
         if new_password and new_password != confirm_password:
             return render_template("settings.html", user=user, settings_error="The new passwords do not match.")
+        if logo_upload and logo_upload.filename:
+            company_logo = save_company_logo(logo_upload)
+            if not company_logo:
+                return render_template("settings.html", user=user, vendor_categories=vendor_categories, vendor_category_options=VENDOR_CATEGORIES, settings_error="Upload a PNG, JPG, JPEG, WEBP, or GIF logo.")
 
         password_hash = generate_password_hash(new_password) if new_password else user["password_hash"]
         if user["role"] != "Vendor":
@@ -331,11 +399,12 @@ def settings():
             whatsapp_number = None
             catalog_mode = None
             selected_categories = []
+            company_logo = None
         elif catalog_mode not in ("Variety", "Focused") or not selected_categories:
             return render_template("settings.html", user=user, vendor_categories=vendor_categories, vendor_category_options=VENDOR_CATEGORIES, settings_error="Choose whether you sell a variety or focus on a category, then select at least one product range.")
         query_db(
-            "UPDATE users SET email = ?, password_hash = ?, company_name = ?, whatsapp_number = ?, catalog_mode = ? WHERE username = ?",
-            (email, password_hash, company_name, whatsapp_number, catalog_mode, session["username"])
+            "UPDATE users SET email = ?, password_hash = ?, company_name = ?, whatsapp_number = ?, catalog_mode = ?, company_logo = ? WHERE username = ?",
+            (email, password_hash, company_name, whatsapp_number, catalog_mode, company_logo, session["username"])
         )
         query_db("DELETE FROM vendor_categories WHERE user_id = ?", (user["id"],))
         for category in selected_categories:
