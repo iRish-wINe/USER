@@ -2,7 +2,7 @@ import sqlite3
 import os
 from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -109,6 +109,10 @@ def admin_configured():
 
 def is_admin():
     return session.get("is_admin") is True
+
+@app.route("/service-worker.js")
+def service_worker():
+    return send_from_directory(app.static_folder, "service-worker.js", mimetype="application/javascript")
 
 def query_db(query, args=(), one=False):
     conn = sqlite3.connect("marketplace.db", timeout=20)
