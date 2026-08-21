@@ -13,9 +13,11 @@ LOCAL_ADMIN_USERNAME = "Stapps Of Faith"
 LOCAL_ADMIN_PASSWORD = "RICHARD10"
 PRODUCT_CATEGORIES = ["Phones & Accessories", "Groceries", "Clothing", "Books", "Health & Beauty", "Beauty & Personal Care", "Home & Kitchen", "Electronics", "Fast Food", "Other"]
 VENDOR_CATEGORIES = PRODUCT_CATEGORIES + ["Health & Beauty", "Fast Food"]
+VIDEO_EXTENSIONS = {".mp4", ".webm", ".mov"}
 
 UPLOAD_FOLDER = os.path.join("static", "uploads")
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024
 
 def init_db():
     conn = sqlite3.connect("marketplace.db", timeout=20)
@@ -90,6 +92,8 @@ def init_db():
         cursor.execute("ALTER TABLE products ADD COLUMN seller_whatsapp TEXT")
     if "category" not in product_columns:
         cursor.execute("ALTER TABLE products ADD COLUMN category TEXT NOT NULL DEFAULT 'Other'")
+    if "video_file" not in product_columns:
+        cursor.execute("ALTER TABLE products ADD COLUMN video_file TEXT")
     trial_start = datetime.now(timezone.utc)
     trial_expiry = trial_start + timedelta(days=61)
     cursor.execute(
@@ -178,16 +182,27 @@ def home():
         category = "Fast Food" if is_fast_food else request.form.get("category", "Other")
         location = request.form.get("location")
         file = request.files.get("product_image")
+        video = request.files.get("product_video")
+        video_filename = None
+        if video and video.filename:
+            video_extension = os.path.splitext(video.filename)[1].lower()
+            if not vendor_subscription["is_premium"]:
+                return redirect(url_for("home", listing_error="Only verified vendors with an active Premium Store or trial can upload product videos."))
+            if video_extension not in VIDEO_EXTENSIONS:
+                return redirect(url_for("home", listing_error="Product videos must be MP4, WebM, or MOV files."))
+            video_filename = f"video-{uuid.uuid4().hex}{video_extension}"
         filename = "fast-food-placeholder.svg" if is_fast_food else secure_filename(file.filename) if file and file.filename else ""
         
         if title and price and description and location and (is_fast_food or file and file.filename):
             if not is_fast_food:
                 file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+            if video_filename:
+                video.save(os.path.join(app.config["UPLOAD_FOLDER"], video_filename))
             b_label = session.get("company_name") if vendor_subscription["is_premium"] and session.get("company_name") else "Individual Vendor"
             
             query_db(
-                "INSERT INTO products (title, price, description, image_file, seller, seller_email, seller_whatsapp, location, business_label, category) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (title, float(price), description, filename, session["username"], session["email"], session.get("whatsapp_number"), location, b_label, category)
+                "INSERT INTO products (title, price, description, image_file, video_file, seller, seller_email, seller_whatsapp, location, business_label, category) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (title, float(price), description, filename, video_filename, session["username"], session["email"], session.get("whatsapp_number"), location, b_label, category)
             )
             return redirect(url_for("home"))
             
