@@ -2,18 +2,21 @@
 <html>
 <head>
     <title>Biz Hub</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='biz-hub-logo.svg') }}">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     <meta name="theme-color" content="#123047">
     <style>
         :root { color-scheme: light; --page-bg: #f7fafc; --surface: #ffffff; --text: #2d3748; --muted: #718096; --border: #e2e8f0; --input-bg: #ffffff; --soft-bg: #ebf8ff; }
         :root[data-theme="dark"] { color-scheme: dark; --page-bg: #17202b; --surface: #243140; --text: #f7fafc; --muted: #c0cad6; --border: #405163; --input-bg: #1d2935; --soft-bg: #20384b; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; background-color: var(--page-bg); color: var(--text); margin: 0; }
-        .container { max-width: 1100px; margin: 0 auto; }
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: clamp(12px, 4vw, 40px); background-color: var(--page-bg); color: var(--text); margin: 0; overflow-x: hidden; font-size: 16px; }
+        .container { width: min(100%, 1100px); margin: 0 auto; }
         .brand-logo { width: 190px; height: auto; display: block; }
         :root[data-theme="dark"] .brand-logo { background: #ffffff; border-radius: 8px; }
-        .navbar { display: flex; justify-content: space-between; align-items: center; background-color: var(--surface); padding: 15px 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.12); margin-bottom: 20px; }
-        .nav-links a { margin-left: 15px; text-decoration: none; color: #2b6cb0; font-weight: bold; }
+        .navbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; background-color: var(--surface); padding: 15px 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.12); margin-bottom: 20px; }
+        .nav-links { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 10px; min-width: 0; }
+        .nav-links a { margin-left: 5px; text-decoration: none; color: #2b6cb0; font-weight: bold; }
         .nav-links a.logout { color: #e53e3e; }
         .theme-toggle { background: transparent; border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-left: 15px; }
         .auth-box { background-color: var(--soft-bg); border: 1px solid var(--border); padding: 15px; border-radius: 6px; margin-bottom: 20px; text-align: center; }
@@ -23,12 +26,12 @@
         .filter-bar select, .filter-bar input { width: auto; margin-bottom: 0; padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px; background-color: var(--input-bg); color: var(--text); }
         .filter-bar input { flex: 1; min-width: 180px; }
         .filter-btn { background-color: #2b6cb0; color: white; border: none; padding: 8px 20px; border-radius: 4px; font-weight: bold; cursor: pointer; }
-        .layout { display: grid; grid-template-columns: 280px 1fr 280px; gap: 30px; }
+        .layout { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr) minmax(220px, 280px); gap: clamp(14px, 2.5vw, 30px); }
         form.listing-form { background-color: var(--surface); padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.12); height: fit-content; }
         input[type="text"], input[type="number"], select, textarea, input[type="file"] { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid var(--border); border-radius: 4px; box-sizing: border-box; background-color: var(--input-bg); color: var(--text); }
         textarea { height: 80px; resize: vertical; }
         button.submit-btn { background-color: #319795; color: white; border: none; padding: 12px; cursor: pointer; border-radius: 4px; font-size: 15px; width: 100%; font-weight: bold; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr)); gap: 20px; min-width: 0; }
         .card { background-color: var(--surface); border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.12); border: 1px solid var(--border); display: flex; flex-direction: column; }
         .card-img { width: 100%; height: 150px; object-fit: cover; background-color: #edf2f7; }
         .card-video { width: 100%; max-height: 220px; object-fit: cover; background-color: #111827; }
@@ -57,28 +60,29 @@
         .contact-link.whatsapp { background: #25D366; }
         .contact-link.email { background: #2b6cb0; }
         .contact-link.sms { background: #805ad5; }
-        @media (max-width: 900px) { body { padding: 15px; } .layout { grid-template-columns: 1fr; } .navbar { padding: 15px; } }
+        @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .navbar { padding: 15px; } .filter-bar { flex-wrap: wrap; } .filter-bar input { min-width: 160px; } }
         @media (max-width: 600px) {
             body { padding: 8px; }
             .navbar { padding: 10px; gap: 8px; align-items: flex-start; }
-            .brand-logo { width: 140px; }
-            .nav-links { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 5px; font-size: 12px; }
+            .brand-logo { width: 135px; }
+            .nav-links { gap: 4px; font-size: 13px; }
             .nav-links a, .theme-toggle { margin-left: 0; padding: 5px 6px; }
-            .filter-bar { padding: 10px; gap: 7px; flex-wrap: wrap; margin-bottom: 15px; }
+            .filter-bar { padding: 10px; gap: 7px; flex-wrap: wrap; margin-bottom: 15px; font-size: 13px; }
             .filter-bar input { min-width: 100%; order: 2; }
             .filter-bar select { flex: 1; min-width: 0; }
             .filter-btn { padding: 8px 12px; }
-            .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+            .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; min-width: 0; }
             .card-img { height: 90px; }
             .card-video { max-height: 90px; }
             .card-body { padding: 7px; min-width: 0; }
-            .card-title { font-size: 14px; line-height: 1.15; overflow-wrap: anywhere; }
-            .card-price { font-size: 15px; margin-bottom: 5px; }
-            .card-text { font-size: 11px; line-height: 1.25; overflow-wrap: anywhere; }
-            .card-brand, .card-metadata, .card-location { font-size: 10px; overflow-wrap: anywhere; }
+            .catalog-area { min-width: 0; }
+            .card-title { font-size: 16px; line-height: 1.15; overflow-wrap: anywhere; }
+            .card-price { font-size: 17px; margin-bottom: 5px; }
+            .card-text { font-size: 13px; line-height: 1.25; overflow-wrap: anywhere; }
+            .card-brand, .card-metadata, .card-location { font-size: 12px; overflow-wrap: anywhere; }
             .seller-logo { width: 22px; height: 22px; }
             .card-actions { gap: 5px; }
-            .cart-btn, .delete-btn { padding: 7px 3px; font-size: 11px; }
+            .cart-btn, .delete-btn { padding: 7px 3px; font-size: 13px; }
         }
     </style>
 </head>
@@ -158,7 +162,7 @@
                 {% endif %}
             </div>
 
-            <div>
+            <div class="catalog-area">
                 <h2>🛍️ Available Items</h2>
                 <div class="grid">
                     {% for product in products %}
