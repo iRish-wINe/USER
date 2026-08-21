@@ -87,18 +87,25 @@
                     <div class="plan-box"><b>{{ vendor_subscription.name }}</b>{% if vendor_subscription.trial %} · Premium trial ends {{ vendor_subscription.expires }}{% elif vendor_subscription.is_premium %} · Renews {{ vendor_subscription.expires }}{% endif %}<br>Listings: {{ listing_count }}{% if not vendor_subscription.is_premium %}/3{% else %} · Unlimited{% endif %} · <a href="{{ url_for('subscription') }}">View plans</a></div>
                     {% if listing_error %}<div class="listing-error">{{ listing_error }}</div>{% endif %}
                     <form method="POST" action="{{ url_for('home') }}" enctype="multipart/form-data" class="listing-form">
-                        <h3>📢 List Product</h3>
-                        <input type="text" name="title" placeholder="Item Name" required>
-                        <input type="number" name="price" step="0.01" placeholder="Price (GHS)" required>
-                        <select name="category" required>
-                            <option value="" disabled selected>Choose product type</option>
-                            {% for category in categories %}<option value="{{ category }}">{{ category }}</option>{% endfor %}
-                        </select>
+                        {% if session.get('seller_type') == 'Fast Food' %}
+                            <h3>🍽️ List Meal</h3>
+                            <input type="text" name="meal_name" placeholder="Meal name" required>
+                            <input type="number" name="price" step="0.01" placeholder="Meal price (GHS)" required>
+                            <textarea name="meal_description" placeholder="Describe meal" required></textarea>
+                        {% else %}
+                            <h3>📢 List Product</h3>
+                            <input type="text" name="title" placeholder="Item Name" required>
+                            <input type="number" name="price" step="0.01" placeholder="Price (GHS)" required>
+                            <select name="category" required>
+                                <option value="" disabled selected>Choose product type</option>
+                                {% for category in categories %}<option value="{{ category }}">{{ category }}</option>{% endfor %}
+                            </select>
+                            <textarea name="description" placeholder="Description" required></textarea>
+                            <input type="file" name="product_image" accept="image/*" required>
+                        {% endif %}
                         <select name="location">
                             {% for city in ['Accra', 'Akim Oda', 'Cape Coast', 'Koforidua', 'Kumasi', 'Nsawam', 'Takoradi', 'Tamale', 'Tema'] %}<option value="{{ city }}">{{ city }}</option>{% endfor %}
                         </select>
-                        <textarea name="description" placeholder="Description" required></textarea>
-                        <input type="file" name="product_image" accept="image/*" required>
                         <button type="submit" class="submit-btn">Publish</button>
                     </form>
                 {% elif session.get('username') %}

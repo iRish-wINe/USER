@@ -58,6 +58,7 @@
                 <select name="seller_type" id="sellerTypeSelect" onchange="toggleCompanyField()">
                     <option value="Individual">Individual Vendor</option>
                     <option value="Company">Registered Company / Business Brand</option>
+                    <option value="Fast Food">Fast Food Vendor / Company</option>
                 </select>
 
                 <div id="companyBox" class="company-field">
@@ -94,7 +95,7 @@
         function toggleCompanyField() {
             let sellerSelect = document.getElementById("sellerTypeSelect");
             let companyBox = document.getElementById("companyBox");
-            if (sellerSelect.value === "Company") {
+            if (sellerSelect.value === "Company" || sellerSelect.value === "Fast Food") {
                 companyBox.style.display = "block";
             } else {
                 companyBox.style.display = "none";

@@ -118,16 +118,18 @@ def home():
         if not vendor_subscription["is_premium"] and listing_count >= 3:
             return redirect(url_for("home", listing_error="Basic accounts can list up to 3 products. Upgrade to Premium for unlimited listings."))
             
-        title = request.form.get("title")
         price = request.form.get("price")
-        description = request.form.get("description")
-        category = request.form.get("category", "Other")
+        is_fast_food = vendor["seller_type"] == "Fast Food"
+        title = request.form.get("meal_name" if is_fast_food else "title")
+        description = request.form.get("meal_description" if is_fast_food else "description")
+        category = "Fast Food" if is_fast_food else request.form.get("category", "Other")
         location = request.form.get("location")
         file = request.files.get("product_image")
+        filename = "fast-food-placeholder.svg" if is_fast_food else secure_filename(file.filename) if file and file.filename else ""
         
-        if title and price and description and location and file:
-            filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+        if title and price and description and location and (is_fast_food or file and file.filename):
+            if not is_fast_food:
+                file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
             b_label = session.get("company_name") if vendor_subscription["is_premium"] and session.get("company_name") else "Individual Vendor"
             
             query_db(
@@ -327,6 +329,7 @@ def login():
                 session["username"] = user["username"]
                 session["email"] = user["email"]
                 session["role"] = user["role"]
+                session["seller_type"] = user["seller_type"]
                 session["company_name"] = user["company_name"]
                 session["whatsapp_number"] = user["whatsapp_number"]
                 return redirect(url_for("home"))
@@ -359,6 +362,7 @@ def register():
             session["username"] = username
             session["email"] = email
             session["role"] = role
+            session["seller_type"] = seller_type
             session["company_name"] = company_name
             session["whatsapp_number"] = whatsapp_number
             return redirect(url_for("home"))
