@@ -42,6 +42,13 @@
         .cart-title-side { margin-top: 0; border-bottom: 2px solid #edf2f7; padding-bottom: 10px; font-size: 18px; }
         .cart-item-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; color: var(--muted); gap: 10px; }
         .clear-cart-link { display: block; color: var(--muted); text-align: center; font-size: 12px; margin-top: 15px; text-decoration: none; }
+        .contact-footer { margin-top: 35px; padding: 24px 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; text-align: center; }
+        .contact-footer h3 { margin: 0 0 15px; }
+        .contact-links { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; }
+        .contact-link { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 4px; color: white; font-weight: bold; text-decoration: none; }
+        .contact-link.whatsapp { background: #25D366; }
+        .contact-link.email { background: #2b6cb0; }
+        .contact-link.sms { background: #805ad5; }
         @media (max-width: 900px) { body { padding: 15px; } .layout { grid-template-columns: 1fr; } .navbar { padding: 15px; } }
     </style>
 </head>
@@ -160,6 +167,14 @@
                 {% else %}<p>Your cart is completely empty. Add items from the catalog grid!</p>{% endif %}
             </aside>
         </div>
+        <footer class="contact-footer">
+            <h3>Contact Biz Hub</h3>
+            <div class="contact-links">
+                <a class="contact-link whatsapp" href="https://wa.me/233558272972" target="_blank" rel="noopener">💬 WhatsApp: 233558272972</a>
+                <a class="contact-link email" href="mailto:contactBizHub@proton.me">✉️ Email: contactBizHub@proton.me</a>
+                <a class="contact-link sms" href="sms:+233551291358">📱 SMS: 233551291358</a>
+            </div>
+        </footer>
     </div>
     <script>
         const themeToggle = document.getElementById('theme-toggle');
