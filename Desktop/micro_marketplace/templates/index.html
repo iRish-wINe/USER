@@ -116,7 +116,7 @@
             </select>
             <label for="location-filter" style="font-weight: bold; font-size: 14px; color: #4a5568;">Near:</label>
             <select id="location-filter" name="filter_location">
-                {% for city in ['All', 'Accra', 'Akim Oda', 'Cape Coast', 'Koforidua', 'Kumasi', 'Nsawam', 'Takoradi', 'Tamale', 'Tema'] %}
+                {% for city in  ['🌍 All Cities (Ghana)', 'Abirem', 'Aburi', 'Accra', 'Ada', 'Aflao', 'Agona Swedru', 'Akim Achiase', 'Akim Oda', 'Asamankese', 'Cape Coast', 'Elmina', 'Ho', 'Hohoe', 'Jasikan', 'Kasoa', 'Keta', 'Kintampo', 'Koforidua', 'Kumasi', 'Kwahu', 'Mankessim', 'Nkawkaw', 'Nsawam', 'Sehwi', 'Suhum', 'Sunyani', 'Takoradi', 'Tamale', 'Tema'] %}
                     <option value="{{ city }}" {% if active_filter == city %}selected{% endif %}>{{ '🌍 All Cities (Ghana)' if city == 'All' else city }}</option>
                 {% endfor %}
             </select>
@@ -148,7 +148,7 @@
                             <input id="product-image" type="file" name="product_image" accept="image/*">
                         {% endif %}
                         <select name="location">
-                            {% for city in ['Accra', 'Akim Oda', 'Cape Coast', 'Koforidua', 'Kumasi', 'Nsawam', 'Takoradi', 'Tamale', 'Tema'] %}<option value="{{ city }}">{{ city }}</option>{% endfor %}
+                            {% for city in ['Abirem', 'Aburi', 'Accra', 'Ada', 'Aflao', 'Agona Swedru', 'Akim Achiase', 'Akim Oda', 'Asamankese', 'Cape Coast', 'Elmina', 'Ho', 'Hohoe', 'Jasikan', 'Kasoa', 'Keta', 'Kintampo', 'Koforidua', 'Kumasi', 'Kwahu', 'Mankessim', 'Nkawkaw', 'Nsawam', 'Sehwi', 'Suhum', 'Sunyani', 'Takoradi', 'Tamale', 'Tema'] %}<option value="{{ city }}">{{ city }}</option>{% endfor %}
                         </select>
                         {% if vendor_subscription.is_premium %}
                             <label for="product-video">Or use a verified vendor video (max 20 seconds)</label>
