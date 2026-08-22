@@ -38,7 +38,8 @@ def init_db():
             subscription_expires_at TEXT,
             upgrade_requested_at TEXT,
             catalog_mode TEXT,
-            company_logo TEXT
+            company_logo TEXT,
+            registered_at TEXT
         )
     """)
     cursor.execute("""
@@ -120,6 +121,9 @@ def init_db():
         cursor.execute("ALTER TABLE users ADD COLUMN catalog_mode TEXT")
     if "company_logo" not in user_columns:
         cursor.execute("ALTER TABLE users ADD COLUMN company_logo TEXT")
+    if "registered_at" not in user_columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN registered_at TEXT")
+    cursor.execute("UPDATE users SET registered_at = COALESCE(registered_at, ?) WHERE registered_at IS NULL", (datetime.now(timezone.utc).isoformat(),))
     product_columns = {row[1] for row in cursor.execute("PRAGMA table_info(products)")}
     if "seller_whatsapp" not in product_columns:
         cursor.execute("ALTER TABLE products ADD COLUMN seller_whatsapp TEXT")
@@ -515,7 +519,7 @@ def admin_signup():
 def admin_dashboard():
     if not is_admin():
         return redirect(url_for("admin_login"))
-    users = query_db("SELECT * FROM users ORDER BY role, username")
+    users = query_db("SELECT * FROM users ORDER BY COALESCE(registered_at, '') DESC, username")
     listing_counts = {row["seller"]: row["count"] for row in query_db("SELECT seller, COUNT(*) AS count FROM products GROUP BY seller")}
     return render_template("admin.html", users=users, subscription_status=subscription_status, listing_counts=listing_counts)
 
@@ -704,7 +708,7 @@ def register():
             hashed_pwd = generate_password_hash(password)
             trial_started_at = datetime.now(timezone.utc)
             trial_expires_at = trial_started_at + timedelta(days=61)
-            query_db("INSERT INTO users (username, email, password_hash, role, seller_type, company_name, whatsapp_number, plan, trial_started_at, subscription_expires_at, catalog_mode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (username, email, hashed_pwd, role, seller_type, company_name, whatsapp_number, "basic", trial_started_at.isoformat() if role == "Vendor" else None, trial_expires_at.isoformat() if role == "Vendor" else None, catalog_mode))
+            query_db("INSERT INTO users (username, email, password_hash, role, seller_type, company_name, whatsapp_number, plan, trial_started_at, subscription_expires_at, catalog_mode, registered_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (username, email, hashed_pwd, role, seller_type, company_name, whatsapp_number, "basic", trial_started_at.isoformat() if role == "Vendor" else None, trial_expires_at.isoformat() if role == "Vendor" else None, catalog_mode, datetime.now(timezone.utc).isoformat()))
             new_user = query_db("SELECT id FROM users WHERE username = ?", (username,))[0]
             for category in selected_categories:
                 query_db("INSERT INTO vendor_categories (user_id, category) VALUES (?, ?)", (new_user["id"], category))
